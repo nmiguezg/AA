@@ -83,27 +83,38 @@ function normalizeZeroMean(matrix::AbstractArray{<:Real,2})
     return m2;
 end
 
-
-function main()
-    dataset = readdlm("iris.data", ',');
-    classes = ["Iris-setosa", "Iris-versicolor", "Iris-virginica"];
-
-    inputs = dataset[:, 1:4];
-    targets = dataset[:, 5];
-
-    inputs = convert(Array{Float32,2}, inputs);
-    targets = convert(Array{String,1}, targets);
-
-    targets = oneHotEncoding(targets, classes);
+function classifyOutputs(outputs::AbstractArray{<:Real,2}, threshold::Float64=0.5)
+    if size(outputs, 1) < 1
+        return outputs;
+    elseif size(outputs, 1) == 1
+        return outputs.>=threshold;
+    else
+        (_,indicesMaxEachInstance) = findmax(outputs, dims=2);
+        outputs = falses(size(outputs));
+        outputs[indicesMaxEachInstance] .= true;
+        return outputs;
+    end
 end
 
 
-main();
+dataset = readdlm("iris.data", ',');
+classes = ["Iris-setosa", "Iris-versicolor", "Iris-virginica"];
+
+inputs = dataset[:, 1:4];
+targets = dataset[:, 5];
+
+inputs = convert(Array{Float32,2}, inputs);
+targets = convert(Array{String,1}, targets);
+
+targets = oneHotEncoding(targets, classes);
 
 
-# rna = Chain(Dense(4, 3, σ), Dense(3, 3, identity), softmax);
-#
-# outputs = rna(inputs');
+rna = Chain(Dense(4, 3, σ), Dense(3, 3, identity), softmax);
+
+outputs = rna(inputs');
+
+out = classifyOutputs(outputs');
+
 #
 # loss(x, ideal) = Losses.crossentropy(rna(x), ideal);
 #

@@ -108,13 +108,29 @@ function accuracy(targets::AbstractArray{Bool,2}, outputs::AbstractArray{<:Real,
     end
 end
 
+function crearRNA(topology::AbstractArray{<:Int,1}, funcion_oculta = σ , entradas::Int64, salidas::Int64)
+    ann = Chain();
+    numInputsLayer = entradas;
+    for numOutputsLayer = topology
+        ann = Chain(ann..., Dense(numInputsLayer, numOutputsLayer, funcion_oculta) );
+        numInputsLayer = numOutputsLayer;
+    end; 
+    out_fun = σ;
+    if (salidas > 2) 
+        out_fun = softmax; 
+    end;
+    ann = Chain(ann..., Dense(numInputsLayer, salidas, out_fun));
+end
+
+function entrenarRNA()
+    
+end
+
 dataset = readdlm("/home/nico/3º/AA/iris.data",',');
 inputs = dataset[:,1:4];
 targets = dataset[:,5];
 @assert (size(inputs,1)==size(targets,1))
 inputs = convert(Array{Float32,2},inputs);
-targets1 = oneHotEncoding(targets);
-targets2 = oneHotEncoding(targets);
 
 #=
 targets = oneHotEncoding(targets);

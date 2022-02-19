@@ -1,5 +1,7 @@
 using DelimitedFiles
 using Statistics
+using Flux
+using Flux.Losses
 
 function oneHotEncoding(feature::AbstractArray{<:Any,1}, classes::AbstractArray{<:Any,1})::BitArray
     num_classes = length(classes);
@@ -108,35 +110,51 @@ function accuracy(targets::AbstractArray{Bool,2}, outputs::AbstractArray{<:Real,
     end
 end
 
-function crearRNA(topology::AbstractArray{<:Int,1}, entradas::Int64, salidas::Int64,  funcion_oculta = σ )
+function crearRNA(topology::AbstractArray{<:Int,1}, entradas::Int64, salidas::Int64, funcion_oculta = σ)
     ann = Chain();
     numInputsLayer = entradas;
-    for numOutputsLayer = topology
-        ann = Chain(ann..., Dense(numInputsLayer, numOutputsLayer, fun) );
+    for numOutputsLayer in topology
+        ann = Chain(ann..., Dense(numInputsLayer, numOutputsLayer, identity));
         numInputsLayer = numOutputsLayer;
-    end; 
+    end
     out_fun = σ;
-    if (salidas > 2) 
-        out_fun = softmax; 
-    end;
-    ann = Chain(ann..., Dense(numInputsLayer, salidas, out_fun));
+    if (salidas > 2)
+        out_fun = softmax;
+    end
+    ann = Chain(ann..., Dense(numInputsLayer, salidas), out_fun);
 end
 
-function entrenarRNA()
-    
+function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,2}}; maxEpochs::Int=1000, minLoss::Real=0, learningRate::Real=0.01)
+    ann = crearRNA(topology, size(dataset[1], 2), size(dataset[2], 2));
+    vloss = [];
+
+    loss(x,y) = (size(y,1) == 1) ? Losses.binarycrossentropy(ann(x),y) : Losses.crossentropy(ann(x),y);
+
+    funs = [(l) -> push!(vloss, l), function() loss(dataset[1]', dataset[2]') < minLoss && Flux.stop() end];
+    funs = convert(Array{Function,1}, funs);
+
+    for i in 1:maxEpochs
+        Flux.train!(loss, params(ann), [(dataset[1]', dataset[2]')], ADAM(learningRate));
+    end
+
+    return (ann, vloss);
 end
 
-dataset = readdlm("/home/nico/3º/AA/iris.data",',');
+dataset = readdlm("iris.data",',');
 inputs = dataset[:,1:4];
 targets = dataset[:,5];
 @assert (size(inputs,1)==size(targets,1))
 inputs = convert(Array{Float32,2},inputs);
-
-#=
 targets = oneHotEncoding(targets);
 
-using Flux
-using Flux.Losses
+rna = crearRNA([10], size(inputs, 2), size(targets, 2));
+
+trained = entrenarRNA([10], (inputs,targets), maxEpochs=500);
+
+#=
+
+
+
 loss(x,y) = (size(y,1) == 1) ? Losses.binarycrossentropy(ann(x),y) : Losses.crossentropy(ann(x),y);
 learningRate = 0.01;
 

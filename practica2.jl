@@ -176,7 +176,53 @@ function holdOut(N::Int64, Pval::Float64, Ptest::Float64)
 		((getfield(hold1,1))[sortperm(getfield(hold2,1))],getfield(hold1,2),(reverse(getfield(hold1,1)))[sortperm(getfield(hold2,2))])
 	end
 end
-                    
+
+
+function confusionMatrix(outputs::AbstractArray{Bool,1}, targets::AbstractArray{Bool,1})
+    if size(outputs) == size(targets)
+        suma = outputs.+targets;
+        positivos = count(i->i==1, targets);
+        negativos = size(targets,1) - positivos;
+        vn = count(i->i==0, suma); #verdaderos negativos
+        vp = count(i->i==2, suma); #verdaderos positivos
+        fn = negativos - vn; #falsos negativos
+        fp = positivos - vp; #falsos positivos
+        
+        sensibilidad = vp / (fn + vp);
+        especificidad = vn / (fp + vn);
+        vpp = vp / (vp + fp);
+        vpn = vn / (vn + fn);
+        f1 = 2 / (1/sensibilidad + 1/vpp);
+
+        if vn==size(targets)
+            sensibilidad = 1;vpp = 1;
+        elseif vp==size(targets)
+            especificidad = 1; vpn = 1;
+        elseif fn+vp==0 #salida desada positiva
+            sensibilidad = 0; vpp = 0; f1 = 0;
+        elseif vn+fp==0 #salida desada negativa
+            especificidad = 0; vpn = 0;
+        end
+        (
+            (vn+vp) / (vn+vp+fn+fp), #precisión
+            (fn+fp) / (vn+vp+fn+fp), #tasa de error
+            sensibilidad,
+            especificidad,
+            vpp, #valor predictivo positivo
+            vpn, #valor predictivo negativo
+            f1, #F1-score
+            [[vn fp]; [fn vp]] #confusion matrix
+        )
+
+    else
+        throw(DimensionMismatch("Los vectores no tienen la misma longitud"))
+    end
+end
+function confusionMatrix(outputs::AbstractArray{<:Real,1}, targets::AbstractArray{Bool,1}, umbral=0.5)
+    confusionMatrix(outputs.>=umbral, targets);
+end
+
+
 dataset = readdlm("iris.data",',');
 inputs = dataset[:,1:4];
 targets = dataset[:,5];
@@ -189,7 +235,6 @@ rna = crearRNA([10], size(inputs, 2), size(targets, 2));
 trained = entrenarRNA([10], (inputs,targets));
 
 #=
-
 loss(x,y) = (size(y,1) == 1) ? Losses.binarycrossentropy(ann(x),y) : Losses.crossentropy(ann(x),y);
 learningRate = 0.01;
 

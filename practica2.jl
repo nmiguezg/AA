@@ -2,6 +2,7 @@ using DelimitedFiles
 using Statistics
 using Flux
 using Flux.Losses
+using Random
 
 function oneHotEncoding(feature::AbstractArray{<:Any,1}, classes::AbstractArray{<:Any,1})::BitArray
     num_classes = length(classes);
@@ -152,7 +153,30 @@ function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractAr
     return entrenarRNA(topology, dataset, maxEpochs, minLoss, learningRate);
 end
 
+function holdOut(N::Int64, P::Float64)
+	train_ind = randperm(N);
+	
+	if P>=1.0
+		([],train_ind)
+	elseif P>0.5
+		array= collect(Iterators.partition(train_ind,Int64.(round(N*P, digits=0))));
+		(last(array),first(array));
+	elseif P!=0.0
+		array= collect(Iterators.partition(train_ind,Int64.(round(N*(1-P), digits=0))));
+		(first(array),last(array));
+	else 
+		(train_ind, []);
+	end
+end
 
+function holdOut(N::Int64, Pval::Float64, Ptest::Float64)
+	if (Pval+Ptest)<=1.0
+		hold1=holdOut(N,Ptest);
+		hold2=holdOut(Int64.(length(getfield(hold1,1))), Pval*N/length(getfield(hold1,1)))
+		((getfield(hold1,1))[sortperm(getfield(hold2,1))],getfield(hold1,2),(reverse(getfield(hold1,1)))[sortperm(getfield(hold2,2))])
+	end
+end
+                    
 dataset = readdlm("iris.data",',');
 inputs = dataset[:,1:4];
 targets = dataset[:,5];

@@ -107,12 +107,19 @@ function accuracy(targets::AbstractArray{Bool,2}, outputs::AbstractArray{<:Real,
     end
 end
 
-function crearRNA(topology::AbstractArray{<:Int,1}, entradas::Int64, salidas::Int64, funcion_oculta = σ)
+function crearRNA(topology::AbstractArray{<:Int,1}, entradas::Int64, salidas::Int64, funciones = [])
     ann = Chain();
     numInputsLayer = entradas;
+    a = 1;
     for numOutputsLayer in topology
-        ann = Chain(ann..., Dense(numInputsLayer, numOutputsLayer, σ));
+        if funciones == []
+            ann = Chain(ann..., Dense(numInputsLayer, numOutputsLayer, sigmoid));
+        else
+            ann = Chain(ann..., Dense(numInputsLayer, numOutputsLayer, funciones[a]));
+            a = a+1;
+        end          
         numInputsLayer = numOutputsLayer;
+        
     end
     out_fun = σ;
     if (salidas > 2)

@@ -139,6 +139,13 @@ function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractAr
     return (ann, vloss);
 end
 
+function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,1}}; maxEpochs::Int=1000, minLoss::Real=0, learningRate::Real=0.01)
+    dataset[2] = reshape(dataset[2], :, 1);
+
+    return entrenarRNA(topology, dataset, maxEpochs, minLoss, learningRate);
+end
+
+
 dataset = readdlm("iris.data",',');
 inputs = dataset[:,1:4];
 targets = dataset[:,5];

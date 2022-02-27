@@ -153,6 +153,59 @@ function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractAr
     return entrenarRNA(topology, dataset, maxEpochs, minLoss, learningRate);
 end
 
+#=falta que el conjunto de validacion y test sean parametros opcionales que por defecto vengan vacios=#
+function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,2}}, validation::Tuple{AbstractArray{<:Real,2},
+AbstractArray{Bool,2}}, test::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,2}}; maxEpochs::Int=1000, minLoss::Real=0, learningRate::Real=0.01, maxEpochsVal::Int=20)
+    
+    ann = crearRNA(topology, size(dataset[1], 2), size(dataset[2], 2));
+    vector_entrenamiento = Array{Float32, 1}(undef, 0);#=vector donde se guardan los errores de entrenamiento en cada ciclo=#
+    vector_validacion = Array{Float32, 1}(undef, 0);#=vector donde se guardan los errores de validacion en cada ciclo=#
+    vector_test = Array{Float32, 1}(undef, 0);#=vector donde se guardan los errores de test en cada ciclo=#
+
+    loss(x,y) = (size(y,1) == 1) ? Losses.binarycrossentropy(ann(x),y) : Losses.crossentropy(ann(x),y);
+    
+    if (isempty(validation))
+    	for i in 1:maxEpochs
+        	Flux.train!(loss, params(ann), [(dataset[1]', dataset[2]')], ADAM(learningRate));
+
+        	l = loss(dataset[1]',dataset[2]');
+        	push!(vector_entrenamiento,l);
+
+        	if l <= minLoss break; end
+    	end
+    	return (ann, vector_entrenamiento, vector_validacion, vector_test);
+    else
+    	epochs = 0;
+    	ann_copy = ann;
+    	minloss = 0;
+    	for i in 1:maxEpochs
+    		if (epochs == maxEpochsVal) break; end #=salimos del bucle si se excedio el maximo numero de ciclos sin mejora=#
+    		Flux.train!(loss, params(ann), [(dataset[1]', dataset[2]')], ADAM(learningRate));
+            #=calculamos los errores de entrenamiento, validacion y test=#
+		    trainl = loss(dataset[1]',dataset[2]');
+        	validl = loss(validation[1]',validation[2]');
+        	testl = loss(test[1]',test[2]');
+        	
+        	if(validl < minloss) #=si se mejora el minimo error se guarda la red neuronal que lo ha conseguido=#
+        		epochs = 0;
+        		minloss = validl;
+        		ann_copy = deepcopy(ann);
+        	else 
+        		epochs+=1; #=sino, aumentamos el numero de ciclos sin mejora=#
+        	end
+
+            push!(vector_entrenamiento,trainl);
+        	push!(vector_validacion,validl);
+            push!(vector_test,testl);
+
+        	if validl <= minLoss break; end
+    	end
+        println(vector_entrenamiento, vector_validacion, vector_test);
+    	return (ann_copy, vector_entrenamiento, vector_validacion, vector_test);
+    end
+    
+end
+
 function holdOut(N::Int64, P::Float64)
 	train_ind = randperm(N);
 	

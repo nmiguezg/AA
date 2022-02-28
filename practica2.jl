@@ -118,28 +118,29 @@ function crearRNA(topology::AbstractArray{<:Int,1}, entradas::Int64, salidas::In
         else
             ann = Chain(ann..., Dense(numInputsLayer, numOutputsLayer, funciones[a]));
             a = a+1;
-        end          
+        end
         numInputsLayer = numOutputsLayer;
-        
+
     end
-    out_fun = σ;
+    out_fun = σ; # TODO out_fun = σ.(x); O PROBLEMA ESTÁ AQUÍ
     if (salidas > 2)
         out_fun = softmax;
     end
     ann = Chain(ann..., Dense(numInputsLayer, salidas, identity), out_fun);
 end
 
-function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,2}}; maxEpochs::Int=1000, minLoss::Real=0, learningRate::Real=0.01)
+function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,2}}, maxEpochs::Int=1000, minLoss::Real=0, learningRate::Real=0.01)
     ann = crearRNA(topology, size(dataset[1], 2), size(dataset[2], 2));
     vloss = Array{Float32}(undef, 0);
 
     loss(x,y) = (size(y,1) == 1) ? Losses.binarycrossentropy(ann(x),y) : Losses.crossentropy(ann(x),y);
 
     for i in 1:maxEpochs
-        Flux.train!(loss, params(ann), [(dataset[1]', dataset[2]')], ADAM(learningRate));
+        #Flux.train!(loss, params(ann), [(dataset[1]', dataset[2]')], ADAM(learningRate));
 
-        l = loss(dataset[1]',dataset[2]');
-        push!(vloss,l);
+        #l = loss(dataset[1]', dataset[2]');
+
+        push!(vloss, l);
 
         if l <= minLoss break; end
     end
@@ -147,23 +148,24 @@ function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractAr
     return (ann, vloss);
 end
 
-function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,1}}; maxEpochs::Int=1000, minLoss::Real=0, learningRate::Real=0.01)
-    dataset[2] = reshape(dataset[2], :, 1);
+function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,1}}, maxEpochs::Int=1000, minLoss::Real=0, learningRate::Real=0.01)
+    res = reshape(dataset[2], :, 1);
+    res = convert(Array{Bool,2}, res);
 
-    return entrenarRNA(topology, dataset, maxEpochs, minLoss, learningRate);
+    return entrenarRNA(topology, (dataset[1],res), maxEpochs, minLoss, learningRate);
 end
 
 #=falta que el conjunto de validacion y test sean parametros opcionales que por defecto vengan vacios=#
-function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,2}}, validation::Tuple{AbstractArray{<:Real,2},
-AbstractArray{Bool,2}}, test::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,2}}; maxEpochs::Int=1000, minLoss::Real=0, learningRate::Real=0.01, maxEpochsVal::Int=20)
-    
+function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,2}}, validation::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,2}},
+     test::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,2}}; maxEpochs::Int=1000, minLoss::Real=0, learningRate::Real=0.01, maxEpochsVal::Int=20)
+
     ann = crearRNA(topology, size(dataset[1], 2), size(dataset[2], 2));
     vector_entrenamiento = Array{Float32, 1}(undef, 0);#=vector donde se guardan los errores de entrenamiento en cada ciclo=#
     vector_validacion = Array{Float32, 1}(undef, 0);#=vector donde se guardan los errores de validacion en cada ciclo=#
     vector_test = Array{Float32, 1}(undef, 0);#=vector donde se guardan los errores de test en cada ciclo=#
 
     loss(x,y) = (size(y,1) == 1) ? Losses.binarycrossentropy(ann(x),y) : Losses.crossentropy(ann(x),y);
-    
+
     if (isempty(validation))
     	for i in 1:maxEpochs
         	Flux.train!(loss, params(ann), [(dataset[1]', dataset[2]')], ADAM(learningRate));
@@ -185,12 +187,12 @@ AbstractArray{Bool,2}}, test::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,
 		    trainl = loss(dataset[1]',dataset[2]');
         	validl = loss(validation[1]',validation[2]');
         	testl = loss(test[1]',test[2]');
-        	
+
         	if(validl < minloss) #=si se mejora el minimo error se guarda la red neuronal que lo ha conseguido=#
         		epochs = 0;
         		minloss = validl;
         		ann_copy = deepcopy(ann);
-        	else 
+        	else
         		epochs+=1; #=sino, aumentamos el numero de ciclos sin mejora=#
         	end
 
@@ -203,12 +205,12 @@ AbstractArray{Bool,2}}, test::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,
         println(vector_entrenamiento, vector_validacion, vector_test);
     	return (ann_copy, vector_entrenamiento, vector_validacion, vector_test);
     end
-    
+
 end
 
 function holdOut(N::Int64, P::Float64)
 	train_ind = randperm(N);
-	
+
 	if P>=1.0
 		([],train_ind)
 	elseif P>0.5
@@ -217,7 +219,7 @@ function holdOut(N::Int64, P::Float64)
 	elseif P!=0.0
 		array= collect(Iterators.partition(train_ind,Int64.(round(N*(1-P), digits=0))));
 		(first(array),last(array));
-	else 
+	else
 		(train_ind, []);
 	end
 end
@@ -240,7 +242,7 @@ function confusionMatrix(outputs::AbstractArray{Bool,1}, targets::AbstractArray{
         vp = count(i->i==2, suma); #verdaderos positivos
         fn = negativos - vn; #falsos negativos
         fp = positivos - vp; #falsos positivos
-        
+
         sensibilidad = vp / (fn + vp);
         especificidad = vn / (fp + vn);
         vpp = vp / (vp + fp);
@@ -276,16 +278,47 @@ function confusionMatrix(outputs::AbstractArray{<:Real,1}, targets::AbstractArra
 end
 
 
-dataset = readdlm("iris.data",',');
-inputs = dataset[:,1:4];
-targets = dataset[:,5];
-@assert (size(inputs,1)==size(targets,1))
-inputs = convert(Array{Float32,2},inputs);
-targets = oneHotEncoding(targets);
+function unoVsTodos(inputs::AbstractArray{<:Real,2}, targets::AbstractArray{Bool,2})
+    numInstances = size(targets, 1);
+    numClasses = size(targets, 2);
 
-rna = crearRNA([10], size(inputs, 2), size(targets, 2));
+    outputs = Array{Float32,2}(undef, numInstances, numClasses);
 
-trained = entrenarRNA([10], (inputs,targets));
+    for numClass in 1:numClasses
+        # model = fit(inputs, targets[:,[numClass]]);
+        # println(size((targets[:,[numClass]]),1)); println(size((targets[:,[numClass]]),2));
+        # println(typeof(targets[:,[numClass]]));
+        model = entrenarRNA([3], (inputs, targets[:,numClass]))[1];
+        outputs[:,numClass] .= model(inputs);
+    end
+
+    outputs = softmax(outputs')';
+    vmax = maximum(outputs, dims=2);
+    outputs = (outputs .== vmax);
+
+    return outputs;
+end
+
+function main()
+    dataset = readdlm("iris.data",',');
+    inputs = dataset[:,1:4];
+    targets = dataset[:,5];
+    @assert (size(inputs,1)==size(targets,1))
+    inputs = convert(Array{Float32,2},inputs);
+    targets = oneHotEncoding(targets);
+
+    ann = crearRNA([10], size(inputs, 2), size(targets[:,1], 2));
+
+    outAnn = ann(inputs');
+
+    #trained = entrenarRNA([10], (inputs,targets));
+    #trained2 = entrenarRNA([10], (inputs,targets[:,1]));
+
+    #out = unoVsTodos(inputs, targets);
+end
+
+main();
+
 
 #=
 loss(x,y) = (size(y,1) == 1) ? Losses.binarycrossentropy(ann(x),y) : Losses.crossentropy(ann(x),y);

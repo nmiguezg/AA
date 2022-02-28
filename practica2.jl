@@ -122,7 +122,7 @@ function crearRNA(topology::AbstractArray{<:Int,1}, entradas::Int64, salidas::In
         numInputsLayer = numOutputsLayer;
 
     end
-    out_fun = σ; # TODO out_fun = σ.(x); O PROBLEMA ESTÁ AQUÍ
+    out_fun = x -> σ.(x);
     if (salidas > 2)
         out_fun = softmax;
     end
@@ -136,9 +136,9 @@ function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractAr
     loss(x,y) = (size(y,1) == 1) ? Losses.binarycrossentropy(ann(x),y) : Losses.crossentropy(ann(x),y);
 
     for i in 1:maxEpochs
-        #Flux.train!(loss, params(ann), [(dataset[1]', dataset[2]')], ADAM(learningRate));
+        Flux.train!(loss, params(ann), [(dataset[1]', dataset[2]')], ADAM(learningRate));
 
-        #l = loss(dataset[1]', dataset[2]');
+        l = loss(dataset[1]', dataset[2]');
 
         push!(vloss, l);
 
@@ -285,11 +285,8 @@ function unoVsTodos(inputs::AbstractArray{<:Real,2}, targets::AbstractArray{Bool
     outputs = Array{Float32,2}(undef, numInstances, numClasses);
 
     for numClass in 1:numClasses
-        # model = fit(inputs, targets[:,[numClass]]);
-        # println(size((targets[:,[numClass]]),1)); println(size((targets[:,[numClass]]),2));
-        # println(typeof(targets[:,[numClass]]));
-        model = entrenarRNA([3], (inputs, targets[:,numClass]))[1];
-        outputs[:,numClass] .= model(inputs);
+        model = entrenarRNA([10], (inputs, targets[:,numClass]))[1];
+        outputs[:,numClass] = model(inputs');
     end
 
     outputs = softmax(outputs')';
@@ -307,25 +304,7 @@ function main()
     inputs = convert(Array{Float32,2},inputs);
     targets = oneHotEncoding(targets);
 
-    ann = crearRNA([10], size(inputs, 2), size(targets[:,1], 2));
-
-    outAnn = ann(inputs');
-
-    #trained = entrenarRNA([10], (inputs,targets));
-    #trained2 = entrenarRNA([10], (inputs,targets[:,1]));
-
-    #out = unoVsTodos(inputs, targets);
+    out = unoVsTodos(inputs, targets);
 end
 
 main();
-
-
-#=
-loss(x,y) = (size(y,1) == 1) ? Losses.binarycrossentropy(ann(x),y) : Losses.crossentropy(ann(x),y);
-learningRate = 0.01;
-
-ann = Chain(Dense(4,10, sigmoid), Dense(10,3, identity), softmax);
-
-outputs = ann(inputs');
-
-Flux.train!(loss, params(ann), [(inputs', targets')], ADAM(learningRate)); =#

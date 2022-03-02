@@ -3,6 +3,7 @@ using Statistics
 using Flux
 using Flux.Losses
 using Random
+using Plots
 
 function oneHotEncoding(feature::AbstractArray{<:Any,1}, classes::AbstractArray{<:Any,1})::BitArray
     num_classes = length(classes);
@@ -156,8 +157,8 @@ function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractAr
 end
 
 #=falta que el conjunto de validacion y test sean parametros opcionales que por defecto vengan vacios=#
-function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,2}}, validation::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,2}},
-     test::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,2}}; maxEpochs::Int=1000, minLoss::Real=0, learningRate::Real=0.01, maxEpochsVal::Int=20)
+function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractArray{<:Real,2} , AbstractArray{Bool,2}}, 
+     test::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,2}}, validation::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,2}}; maxEpochs::Int=1000, minLoss::Real=0, learningRate::Real=0.01, maxEpochsVal::Int=20)
 
     ann = crearRNA(topology, size(dataset[1], 2), size(dataset[2], 2));
     vector_entrenamiento = Array{Float32, 1}(undef, 0);#=vector donde se guardan los errores de entrenamiento en cada ciclo=#
@@ -304,7 +305,48 @@ function main()
     inputs = convert(Array{Float32,2},inputs);
     targets = oneHotEncoding(targets);
 
-    out = unoVsTodos(inputs, targets);
+    topology = [15, 9];
+    normalMethod = 1;
+
+    tupla=holdOut(size(inputs, 1), 0.3,0.2);
+
+    inputsTraining = inputs[tupla[1],:];
+    targetsTraining = targets[tupla[1],:];
+    if (size(tupla, 1) == 3)
+    	inputsValidation = inputs[tupla[2],:];
+    	targetsValidation = targets[tupla[2],:];
+    	inputsTest = inputs[tupla[3],:];
+    	targetsTest = targets[tupla[3],:];
+    else
+	inputsTest = inputs[tupla[2],:];
+    	targetsTest = targets[tupla[2],:];
+    end
+
+    if (normalMethod == 1)
+
+        trainParam = calculateZeroMeanNormalizationParameters(inputsTraining);
+
+        inputsTraining = normalizeZeroMean!(inputsTraining, trainParam);
+	if (size(tupla, 1) == 3)
+ 	    inputsValidation = normalizeZeroMean!(inputsValidation, trainParam);
+	end
+ 	inputsTest = normalizeZeroMean!(inputsTest, trainParam);
+    else
+	trainParam = calculateMinMaxNormalizationParameters(inputsTraining);
+	inputsTraining = normalizeMinMax!(inputsTraining, trainParam);
+        if (size(tupla, 1) == 3)    
+      	    inputsValidation = normalizeMinMax!(inputsValidation, trainParam);
+    	end
+        inputsTest = normalizeMinMax!(inputsTest, trainParam);
+    end
+
+    tupla2 = entrenarRNA(topology, (inputsTraining, targetsTraining),(inputsTest, targetsTest),(inputsValidation, targetsValidation));
+    
+    g = plot(1:20, tupla2[2], label = "Training");
+    plot!(g, 1:20, tupla2[3], label = "Validation");
+    plot!(g, 1:20, tupla2[4], label = "Test");
+#   out = unoVsTodos(inputs, targets);
 end
 
 main();
+	

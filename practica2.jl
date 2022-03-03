@@ -156,9 +156,8 @@ function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractAr
     return entrenarRNA(topology, (dataset[1],res), maxEpochs, minLoss, learningRate);
 end
 
-#=falta que el conjunto de validacion y test sean parametros opcionales que por defecto vengan vacios=#
 function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractArray{<:Real,2} , AbstractArray{Bool,2}}, 
-     test::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,2}}, validation::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,2}}; maxEpochs::Int=1000, minLoss::Real=0, learningRate::Real=0.01, maxEpochsVal::Int=20)
+     test::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,2}} = (Array{Real,2}(undef, 0, 0), Array{Bool,2}(undef, 0, 0)), validation::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,2}} = (Array{Real,2}(undef, 0, 0), Array{Bool,2}(undef, 0, 0)); maxEpochs::Int=1000, minLoss::Real=0, learningRate::Real=0.01, maxEpochsVal::Int=20)
 
     ann = crearRNA(topology, size(dataset[1], 2), size(dataset[2], 2));
     vector_entrenamiento = Array{Float32, 1}(undef, 0);#=vector donde se guardan los errores de entrenamiento en cada ciclo=#

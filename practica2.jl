@@ -277,6 +277,49 @@ function confusionMatrix(outputs::AbstractArray{<:Real,1}, targets::AbstractArra
     confusionMatrix(outputs.>=umbral, targets);
 end
 
+function confusionMatrix(outputs::AbstractArray{Bool,2}, targets::AbstractArray{Bool,2}, opcion::String, umbral=0.5)
+    a = size(outputs, 2)
+    b = size(targets, 2)
+    if a == b
+        if b == 2
+            end
+        if a == 1
+            confusionMatrix(outputs, targets)
+        else
+            sensibilidad = zeros(a)
+            especificidad = zeros(a)
+            vpp = zeros(a)
+            vpn = zeros(a)
+            f1 = zeros(a)
+            for n in eachindex(outputs)
+                if outputs[n] != 0
+                    result = confusionMatrix(outputs[n], targets[n])
+                    sensibilidad[n] = result[3]
+                    especificidad[n] = result[4]
+                    vpp[n] = result[5]
+                    vpn[n] = result[6]
+                    f1[n] = result[7]
+                end
+            end
+            c_matrix = Array{Float64, a}
+            for n in eachindex(outputs)
+                actual = 0
+                predicted = 0
+                for m in eachindex(outputs[n])
+                    if outputs[n, m]
+                        predicted = m
+                    end
+                    if targets[n, m]
+                        actual = m
+                    end
+                end
+                c_matrix[actual, predicted] += c_matrix[actual, predicted]
+                #insert!c_matrix[actual, predicted], c_matrix[actual, predicted] + 1)
+            end
+            print(c_matrix)
+        end
+    end
+end									
 
 function unoVsTodos(inputs::AbstractArray{<:Real,2}, targets::AbstractArray{Bool,2})
     numInstances = size(targets, 1);

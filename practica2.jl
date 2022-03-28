@@ -422,6 +422,9 @@ function crossvalidation(targets:: AbstractArray{Bool,2}, k::Int64)
 	return vector
 end
 
+function crossvalidation(targets::AbstractArray{<:Any,1}, k::Int64)
+	crossvalidation(oneHotEncoding(targets),k)
+end
 
 function main()
     dataset = readdlm("iris.data",',');

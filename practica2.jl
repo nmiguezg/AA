@@ -156,7 +156,7 @@ function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractAr
     return entrenarRNA(topology, (dataset[1],res), maxEpochs, minLoss, learningRate);
 end
 
-function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractArray{<:Real,2} , AbstractArray{Bool,2}}, 
+function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractArray{<:Real,2} , AbstractArray{Bool,2}},
      test::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,2}} = (Array{Real,2}(undef, 0, 0), Array{Bool,2}(undef, 0, 0)), validation::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,2}} = (Array{Real,2}(undef, 0, 0), Array{Bool,2}(undef, 0, 0)); maxEpochs::Int=1000, minLoss::Real=0, learningRate::Real=0.01, maxEpochsVal::Int=20)
 
     ann = crearRNA(topology, size(dataset[1], 2), size(dataset[2], 2));
@@ -278,48 +278,100 @@ function confusionMatrix(outputs::AbstractArray{<:Real,1}, targets::AbstractArra
 end
 
 function confusionMatrix(outputs::AbstractArray{Bool,2}, targets::AbstractArray{Bool,2}, opcion::String, umbral=0.5)
-    a = size(outputs, 2)
-    b = size(targets, 2)
-    if a == b
-        if b == 2
-            end
-        if a == 1
-            confusionMatrix(outputs, targets)
-        else
-            sensibilidad = zeros(a)
-            especificidad = zeros(a)
-            vpp = zeros(a)
-            vpn = zeros(a)
-            f1 = zeros(a)
-            for n in eachindex(outputs)
-                if outputs[n] != 0
-                    result = confusionMatrix(outputs[n], targets[n])
-                    sensibilidad[n] = result[3]
-                    especificidad[n] = result[4]
-                    vpp[n] = result[5]
-                    vpn[n] = result[6]
-                    f1[n] = result[7]
-                end
-            end
-            c_matrix = Array{Float64, a}
-            for n in eachindex(outputs)
-                actual = 0
-                predicted = 0
-                for m in eachindex(outputs[n])
-                    if outputs[n, m]
-                        predicted = m
-                    end
-                    if targets[n, m]
-                        actual = m
-                    end
-                end
-                c_matrix[actual, predicted] += c_matrix[actual, predicted]
-                #insert!c_matrix[actual, predicted], c_matrix[actual, predicted] + 1)
-            end
-            print(c_matrix)
-        end
+    if opcion == "macro" opt = false
+    elseif opcion == "weighted" opt = true
+    else throw(Exception("Opción no válida.\nOpciones válidas: 'macro' y 'weighted'"));
     end
-end									
+
+    cOut = size(outputs, 2); # n classes
+    cTar = size(targets, 2);
+    iOut = size(outputs, 1); # n instances
+    iTar = size(targets, 1);
+
+    if (cOut == cTar && iOut==iTar)
+        if cTar == 2
+            throw(Exception("Número de columnas incorrecto"));
+        elseif cOut == 1
+            confusionMatrix(outputs, targets);
+        else
+            sensibilidad = zeros(cOut);
+            especificidad = zeros(cOut);
+            vpp = zeros(cOut);
+            vpn = zeros(cOut);
+            f1 = zeros(cOut);
+
+            for i in 1:cOut
+                for n in eachindex(outputs[:,i])
+                    if n != 0
+                        result = confusionMatrix(outputs[:,i], targets[:,i]);
+                        sensibilidad[i] = result[3];
+                        especificidad[i] = result[4];
+                        vpp[i] = result[5];
+                        vpn[i] = result[6];
+                        f1[i] = result[7];
+                        break;
+                    end
+                end
+            end
+
+            c_matrix = Array{Float64,2}(undef, cOut, cTar);
+            acertados = 0;
+
+            for i in 1:cOut
+                for j in 1:cTar
+                    count = 0;
+                    for k in 1:iOut
+                        if outputs[k,i] == 1 && targets[k,j] == 1
+                            count += 1;
+                        end
+                    end
+
+                    if i == j acertados += count end
+                    c_matrix[i,j] = count;
+                end
+            end
+
+            acc = accuracy(targets, outputs);
+
+            if opt  # weighted
+                return (
+                    acc,    # precision
+                    1-acc,  # error
+                    (sum(sensibilidad)/cOut) * (acertados/iOut),    # sensibilidad
+                    (sum(especificidad)/cOut) * (acertados/iOut),   # especificidad
+                    (sum(vpp)/cOut) * (acertados/iOut), # vpp
+                    (sum(vpn)/cOut) * (acertados/iOut), # vpn
+                    (sum(f1)/cOut) * (acertados/iOut),  # f1
+                    c_matrix
+                );
+            else    # macro
+                return (
+                    acc,    # precision
+                    1-acc,  # error
+                    sum(sensibilidad)/cOut,     # sensibilidad
+                    sum(especificidad)/cOut,    # especificidad
+                    sum(vpp)/cOut,  # vpp
+                    sum(vpn)/cOut,  # vpn
+                    sum(f1)/cOut,   # f1
+                    c_matrix
+                );
+            end
+        end
+    else
+        throw(DimensionMismatch("Las matrices no tienen el mismo tamaño"));
+    end
+end
+
+function confusionMatrix(outputs::AbstractArray{<:Real,2}, targets::AbstractArray{Bool,2}, opcion::String, umbral=0.5)
+    confusionMatrix(classifyOutputs(outputs), targets, opcion, umbral);
+end
+
+function confusionMatrix(outputs::AbstractArray{<:Any}, targets::AbstractArray{<:Any}, opcion::String, umbral=0.5)
+    @assert (all([in(output, unique(targets)) for output in outputs])) "outputs y targets no tienen las mismas clases";
+
+    confusionMatrix(oneHotEncoding(unique(outputs)), oneHotEncoding(unique(targets)), opcion, umbral);
+end
+
 
 function unoVsTodos(inputs::AbstractArray{<:Real,2}, targets::AbstractArray{Bool,2})
     numInstances = size(targets, 1);
@@ -342,7 +394,7 @@ end
 function crossvalidation(N::Int64, k::Int64)
 	vector= collect(1:k);
 	vector=repeat(vector,convert(Int64, ceil(N/k)))
-	return shuffle!(vector[1:N]); 
+	return shuffle!(vector[1:N]);
 end
 
 function crossvalidation(targets:: AbstractArray{Bool,2}, k::Int64)
@@ -350,22 +402,22 @@ function crossvalidation(targets:: AbstractArray{Bool,2}, k::Int64)
 	vector= collect(1:N);
 	N2=size(targets,2)
 	vector2=collect(1:N)
-	
+
 	#for x in N2
 	#	if(sum(targets[:,x])<k)
 	#		println("pocos")
 	#	end
 	#end
-	
+
 	for x in 1:N2
 		vector2=crossvalidation(sum(targets[:,x]),k)
 		i=1
-		for y in ((x-1)*N+1):((x-1)*N+N) 
+		for y in ((x-1)*N+1):((x-1)*N+N)
 			if targets[y]==1
 				vector[y-(x-1)*N]=vector2[i]
 				i=i+1
 			end
-		end	
+		end
 	end
 	return vector
 end
@@ -392,35 +444,35 @@ function main()
     	inputsTest = inputs[tupla[3],:];
     	targetsTest = targets[tupla[3],:];
     else
-	inputsTest = inputs[tupla[2],:];
+        inputsTest = inputs[tupla[2],:];
     	targetsTest = targets[tupla[2],:];
     end
 
     if (normalMethod == 1)
-
         trainParam = calculateZeroMeanNormalizationParameters(inputsTraining);
-
         inputsTraining = normalizeZeroMean!(inputsTraining, trainParam);
-	if (size(tupla, 1) == 3)
- 	    inputsValidation = normalizeZeroMean!(inputsValidation, trainParam);
-	end
- 	inputsTest = normalizeZeroMean!(inputsTest, trainParam);
+        if (size(tupla, 1) == 3)
+            inputsValidation = normalizeZeroMean!(inputsValidation, trainParam);
+        end
+        inputsTest = normalizeZeroMean!(inputsTest, trainParam);
     else
-	trainParam = calculateMinMaxNormalizationParameters(inputsTraining);
-	inputsTraining = normalizeMinMax!(inputsTraining, trainParam);
-        if (size(tupla, 1) == 3)    
+        trainParam = calculateMinMaxNormalizationParameters(inputsTraining);
+        inputsTraining = normalizeMinMax!(inputsTraining, trainParam);
+        if (size(tupla, 1) == 3)
       	    inputsValidation = normalizeMinMax!(inputsValidation, trainParam);
     	end
         inputsTest = normalizeMinMax!(inputsTest, trainParam);
     end
 
     tupla2 = entrenarRNA(topology, (inputsTraining, targetsTraining),(inputsTest, targetsTest),(inputsValidation, targetsValidation));
-    
+
     g = plot(1:20, tupla2[2], label = "Training");
     plot!(g, 1:20, tupla2[3], label = "Validation");
     plot!(g, 1:20, tupla2[4], label = "Test");
-#   out = unoVsTodos(inputs, targets);
+
+    out = unoVsTodos(inputs, targets);
+
+    cm = confusionMatrix(out, targets, "weighted");
 end
 
 main();
-	

@@ -426,6 +426,41 @@ function crossvalidation(targets::AbstractArray{<:Any,1}, k::Int64)
 	crossvalidation(oneHotEncoding(targets),k)
 end
 
+function modelCrossValidation(model :: int, paremeters :: Dict, inputs :: Array{Any, 2}, targets :: Array{Any, 1}, k :: Int64) 
+	resultadoCadaGrupo = collect(1:k);
+	index=crossvalidation(targets,k);
+	if(model != 0)	
+		for x in 1:k
+			if(model == 1)   #SVN
+				model = SVC(kernel=parameters["kernel"], degree=parameters["kernelDegree"], gamma=parameters["kernelGamma"], C=parameters["C"]);
+			elseif(model == 2) #Tree
+				model = DecisionTreeClassifier(max_depth=parameters["max_depth"], random_state=1);
+			elseif(model == 3) #kNN
+				model = KNeighborsClassifier(parameters["k"]);
+			else
+				println("model debe tener un valor de 0 a 3");
+			end
+			
+			fit!(model, inputs[index.!=x], targets[index.!=x]);
+			outgrupoK=predict(model, inputs[index.==x]);   #salidas
+			
+			nFilas = length(out);
+			resultadoGrupoK= collect(1:nFilas);  #vector cuyos elementos indican si el patrón y coincide en salida y en target
+			targetsGrupoK= targets[index.==x];
+			
+			for y in 1:nFilas
+				resultadoGrupoK[y] = outGrupoK[y]==targetsGrupoK[y];
+			end
+			
+			aciertos = resultadoGrupoK[resultadoGrupoK.==1];
+			resultadoCadaGrupo[x] = length(aciertos)/length(resultadoGrupoK);
+		end
+	else
+		
+	end
+	return resultadoCadaGrupo;
+end
+
 using JLD2
 using Images
 
@@ -489,50 +524,58 @@ function main()
     targets = dataset[:,5];
     @assert (size(inputs,1)==size(targets,1))
     inputs = convert(Array{Float32,2},inputs);
-    targets = oneHotEncoding(targets);
+    targetsOHE = oneHotEncoding(targets);
 
     topology = [15, 9];
     normalMethod = 1;
 
-    tupla=holdOut(size(inputs, 1), 0.3,0.2);
+#    tupla=holdOut(size(inputs, 1), 0.3,0.2);
 
-    inputsTraining = inputs[tupla[1],:];
-    targetsTraining = targets[tupla[1],:];
-    if (size(tupla, 1) == 3)
-    	inputsValidation = inputs[tupla[2],:];
-    	targetsValidation = targets[tupla[2],:];
-    	inputsTest = inputs[tupla[3],:];
-    	targetsTest = targets[tupla[3],:];
-    else
-        inputsTest = inputs[tupla[2],:];
-    	targetsTest = targets[tupla[2],:];
-    end
+#    inputsTraining = inputs[tupla[1],:];
+#    targetsTraining = targets[tupla[1],:];
+#    if (size(tupla, 1) == 3)
+#    	inputsValidation = inputs[tupla[2],:];
+#    	targetsValidation = targets[tupla[2],:];
+#    	inputsTest = inputs[tupla[3],:];
+#    	targetsTest = targets[tupla[3],:];
+#    else
+#       inputsTest = inputs[tupla[2],:];
+#    	targetsTest = targets[tupla[2],:];
+#    end
 
-    if (normalMethod == 1)
-        trainParam = calculateZeroMeanNormalizationParameters(inputsTraining);
-        inputsTraining = normalizeZeroMean!(inputsTraining, trainParam);
-        if (size(tupla, 1) == 3)
-            inputsValidation = normalizeZeroMean!(inputsValidation, trainParam);
-        end
-        inputsTest = normalizeZeroMean!(inputsTest, trainParam);
-    else
-        trainParam = calculateMinMaxNormalizationParameters(inputsTraining);
-        inputsTraining = normalizeMinMax!(inputsTraining, trainParam);
-        if (size(tupla, 1) == 3)
-      	    inputsValidation = normalizeMinMax!(inputsValidation, trainParam);
-    	end
-        inputsTest = normalizeMinMax!(inputsTest, trainParam);
-    end
+#   if (normalMethod == 1)
+#        trainParam = calculateZeroMeanNormalizationParameters(inputsTraining);
+#        inputsTraining = normalizeZeroMean!(inputsTraining, trainParam);
+#        if (size(tupla, 1) == 3)
+#            inputsValidation = normalizeZeroMean!(inputsValidation, trainParam);
+#        end
+#        inputsTest = normalizeZeroMean!(inputsTest, trainParam);
+#    else
+#        trainParam = calculateMinMaxNormalizationParameters(inputsTraining);
+#        inputsTraining = normalizeMinMax!(inputsTraining, trainParam);
+#        if (size(tupla, 1) == 3)
+#      	    inputsValidation = normalizeMinMax!(inputsValidation, trainParam);
+#    	end
+#        inputsTest = normalizeMinMax!(inputsTest, trainParam);
+#    end
 
-    tupla2 = entrenarRNA(topology, (inputsTraining, targetsTraining),(inputsTest, targetsTest),(inputsValidation, targetsValidation));
+#    tupla2 = entrenarRNA(topology, (inputsTraining, targetsTraining),(inputsTest, targetsTest),(inputsValidation, targetsValidation));
 
-    g = plot(1:20, tupla2[2], label = "Training");
-    plot!(g, 1:20, tupla2[3], label = "Validation");
-    plot!(g, 1:20, tupla2[4], label = "Test");
+#    g = plot(1:20, tupla2[2], label = "Training");
+#    plot!(g, 1:20, tupla2[3], label = "Validation");
+#    plot!(g, 1:20, tupla2[4], label = "Test");
 
     out = unoVsTodos(inputs, targets);
 
     cm = confusionMatrix(out, targets, "weighted");
+    
+    params0 = Dict("topology" => topology, "transferF" => [], "learningRate" => 0.01, "tValidacion" => 0.2, "maxEpochs" => , "minLoss" => , "maxEpochsVal" => );
+    params1 = Dict("kernel" => "rbf", "kernelDegree" => 3, "kernelGamma" => 2, "C" => 1);  #SVM 
+    params2 = Dict("max_depth" => 4);    #tree
+    params3 = Dict("k" => 3);     #kNN
+    
+    results = modelCrossValidation(1, params1, inputs, targets, 10)
+    
 end
 
 main()

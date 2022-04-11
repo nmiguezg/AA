@@ -166,20 +166,37 @@ function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractAr
 
     loss(x,y) = (size(y,1) == 1) ? Losses.binarycrossentropy(ann(x),y) : Losses.crossentropy(ann(x),y);
 
-    if (isempty(validation))
+    if (isempty(validation[1]))
+        #errores ciclo 0
+        trainl = loss(dataset[1]',dataset[2]');
+        testl = loss(test[1]',test[2]');
+        push!(vector_entrenamiento,trainl);
+        push!(vector_test,testl);
+
     	for i in 1:maxEpochs
         	Flux.train!(loss, params(ann), [(dataset[1]', dataset[2]')], ADAM(learningRate));
 
-        	l = loss(dataset[1]',dataset[2]');
-        	push!(vector_entrenamiento,l);
+        	trainl = loss(dataset[1]',dataset[2]');
+            testl = loss(test[1]',test[2]');
 
-        	if l <= minLoss break; end
+            push!(vector_entrenamiento,trainl);
+            push!(vector_test,testl);
+
+        	if trainl <= minLoss break; end
     	end
     	return (ann, vector_entrenamiento, vector_validacion, vector_test);
     else
     	epochs = 0;
     	ann_copy = ann;
-    	minloss = 0;
+    	bestValLoss = Inf ;
+
+        #errores ciclo 0
+        trainl = loss(dataset[1]',dataset[2]');
+        validl = loss(validation[1]',validation[2]');
+        testl = loss(test[1]',test[2]');
+        push!(vector_entrenamiento,trainl);
+        push!(vector_validacion,validl);
+        push!(vector_test,testl);
     	for i in 1:maxEpochs
     		if (epochs == maxEpochsVal) break; end #=salimos del bucle si se excedio el maximo numero de ciclos sin mejora=#
     		Flux.train!(loss, params(ann), [(dataset[1]', dataset[2]')], ADAM(learningRate));
@@ -188,9 +205,9 @@ function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractAr
         	validl = loss(validation[1]',validation[2]');
         	testl = loss(test[1]',test[2]');
 
-        	if(validl < minloss) #=si se mejora el minimo error se guarda la red neuronal que lo ha conseguido=#
+        	if(validl < bestValLoss) #=si se mejora el minimo error se guarda la red neuronal que lo ha conseguido=#
         		epochs = 0;
-        		minloss = validl;
+        		bestValLoss = validl;
         		ann_copy = deepcopy(ann);
         	else
         		epochs+=1; #=sino, aumentamos el numero de ciclos sin mejora=#
@@ -199,14 +216,30 @@ function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractAr
             push!(vector_entrenamiento,trainl);
         	push!(vector_validacion,validl);
             push!(vector_test,testl);
-
-        	if validl <= minLoss break; end
+            if trainl <= minLoss break; end
     	end
         println(vector_entrenamiento, vector_validacion, vector_test);
     	return (ann_copy, vector_entrenamiento, vector_validacion, vector_test);
     end
 
 end
+function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractArray{<:Real,2} , AbstractArray{Bool,1}},
+    test::Tuple{AbstractArray{<:Real,2}, AbstractArray{Bool,1}} = (Array{Real,2}(undef, 0, 0), Array{Bool,1}(undef, 0, 0)),
+    validation::Tuple{AbstractArray{<:Real,2},AbstractArray{Bool,1}} = (Array{Real,2}(undef, 0, 0), Array{Bool,1}(undef, 0, 0));
+    maxEpochs::Int=1000, minLoss::Real=0, learningRate::Real=0.01, maxEpochsVal::Int=20)
+
+    trainTargets = reshape(dataset[2], :, 1);
+    trainTargets = convert(Array{Bool,2}, trainTargets);
+
+    testTargets = reshape(test[2], :, 1);
+    testTargets = convert(Array{Bool,2}, testTargets);
+
+    validationTargets = reshape(test[2], :, 1);
+    validationTargets = convert(Array{Bool,2}, validationTargets);
+
+    return entrenarRNA(topology, (dataset[1],trainTargets), (test[1],testTargets), (validation[1],validationTargets), maxEpochs, minLoss, learningRate, maxEpochsVal)
+end
+
 
 function holdOut(N::Int64, P::Float64)
 	train_ind = randperm(N);
@@ -426,41 +459,6 @@ function crossvalidation(targets::AbstractArray{<:Any,1}, k::Int64)
 	crossvalidation(oneHotEncoding(targets),k)
 end
 
-function modelCrossValidation(model :: int, paremeters :: Dict, inputs :: Array{Any, 2}, targets :: Array{Any, 1}, k :: Int64) 
-	resultadoCadaGrupo = collect(1:k);
-	index=crossvalidation(targets,k);
-	if(model != 0)	
-		for x in 1:k
-			if(model == 1)   #SVN
-				model = SVC(kernel=parameters["kernel"], degree=parameters["kernelDegree"], gamma=parameters["kernelGamma"], C=parameters["C"]);
-			elseif(model == 2) #Tree
-				model = DecisionTreeClassifier(max_depth=parameters["max_depth"], random_state=1);
-			elseif(model == 3) #kNN
-				model = KNeighborsClassifier(parameters["k"]);
-			else
-				println("model debe tener un valor de 0 a 3");
-			end
-			
-			fit!(model, inputs[index.!=x], targets[index.!=x]);
-			outgrupoK=predict(model, inputs[index.==x]);   #salidas
-			
-			nFilas = length(out);
-			resultadoGrupoK= collect(1:nFilas);  #vector cuyos elementos indican si el patrón y coincide en salida y en target
-			targetsGrupoK= targets[index.==x];
-			
-			for y in 1:nFilas
-				resultadoGrupoK[y] = outGrupoK[y]==targetsGrupoK[y];
-			end
-			
-			aciertos = resultadoGrupoK[resultadoGrupoK.==1];
-			resultadoCadaGrupo[x] = length(aciertos)/length(resultadoGrupoK);
-		end
-	else
-		
-	end
-	return resultadoCadaGrupo;
-end
-
 using JLD2
 using Images
 
@@ -519,8 +517,6 @@ function extractFeatures(inputs)
 end
 
 function main()
-    dataset = readdlm("iris.data",',');
-    inputs = dataset[:,1:4];
     targets = dataset[:,5];
     @assert (size(inputs,1)==size(targets,1))
     inputs = convert(Array{Float32,2},inputs);
@@ -568,14 +564,65 @@ function main()
     out = unoVsTodos(inputs, targets);
 
     cm = confusionMatrix(out, targets, "weighted");
-    
+
     params0 = Dict("topology" => topology, "transferF" => [], "learningRate" => 0.01, "tValidacion" => 0.2, "maxEpochs" => , "minLoss" => , "maxEpochsVal" => );
     params1 = Dict("kernel" => "rbf", "kernelDegree" => 3, "kernelGamma" => 2, "C" => 1);  #SVM 
     params2 = Dict("max_depth" => 4);    #tree
     params3 = Dict("k" => 3);     #kNN
-    
+
     results = modelCrossValidation(1, params1, inputs, targets, 10)
-    
+
 end
 
-main()
+function main2()
+    (images,_,targets) = loadTrainingDataset()
+    inputs = extractFeatures(images);
+    @assert (size(inputs,1)==size(targets,1))
+    inputs = convert(Array{Float32,2},inputs);
+    targets = oneHotEncoding(targets);
+
+    topology = [15, 9];
+    normalMethod = 1;
+
+    tupla=holdOut(size(inputs, 1), 0.3, 0.2);
+
+    inputsTraining = inputs[tupla[1],:];
+    targetsTraining = targets[tupla[1],:];
+    if (size(tupla, 1) == 3)
+    	inputsValidation = inputs[tupla[2],:];
+    	targetsValidation = targets[tupla[2],:];
+    	inputsTest = inputs[tupla[3],:];
+    	targetsTest = targets[tupla[3],:];
+    else
+        inputsTest = inputs[tupla[2],:];
+    	targetsTest = targets[tupla[2],:];
+    end
+
+    if (normalMethod == 1)
+        trainParam = calculateZeroMeanNormalizationParameters(inputsTraining);
+        inputsTraining = normalizeZeroMean!(inputsTraining, trainParam);
+        if (size(tupla, 1) == 3)
+            inputsValidation = normalizeZeroMean!(inputsValidation, trainParam);
+        end
+        inputsTest = normalizeZeroMean!(inputsTest, trainParam);
+    else
+        trainParam = calculateMinMaxNormalizationParameters(inputsTraining);
+        inputsTraining = normalizeMinMax!(inputsTraining, trainParam);
+        if (size(tupla, 1) == 3)
+      	    inputsValidation = normalizeMinMax!(inputsValidation, trainParam);
+    	end
+        inputsTest = normalizeMinMax!(inputsTest, trainParam);
+    end
+
+    tupla2 = entrenarRNA(topology, (inputsTraining, targetsTraining),(inputsTest, targetsTest),(inputsValidation, targetsValidation));
+
+    g = plot(1:length(tupla2[2]), tupla2[2], label = "Training");
+    plot!(g, 1:length(tupla2[3]), tupla2[3], label = "Validation");
+    plot!(g, 1:length(tupla2[4]), tupla2[4], label = "Test");
+
+    #out = unoVsTodos(inputs, targets);
+
+   # cm = confusionMatrix(out, targets, "weighted");
+end
+
+main2()

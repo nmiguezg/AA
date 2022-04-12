@@ -459,16 +459,16 @@ function crossvalidation(targets::AbstractArray{<:Any,1}, k::Int64)
 	crossvalidation(oneHotEncoding(targets),k)
 end
 
-function modelCrossValidation(model :: int, paremeters :: Dict, inputs :: Array{Any, 2}, targets :: Array{Any, 1}, k :: Int64) 
+function modelCrossValidation(model :: Int64, paremeters :: Dict, inputs :: Array{Any, 2}, targets :: Array{Any, 1}, k :: Int64)
 	resultadoCadaGrupo = collect(1:k);
 	index=crossvalidation(targets,k);
-	if(model != 0)	
+	if(model != 0)
 		for x in 1:k
-			if(model == 1)   #SVN
+			if (model == 1)   #SVN
 				model = SVC(kernel=parameters["kernel"], degree=parameters["kernelDegree"], gamma=parameters["kernelGamma"], C=parameters["C"]);
-			elseif(model == 2) #Tree
+			elseif (model == 2) #Tree
 				model = DecisionTreeClassifier(max_depth=parameters["max_depth"], random_state=1);
-			elseif(model == 3) #kNN
+			elseif (model == 3) #kNN
 				model = KNeighborsClassifier(parameters["k"]);
 			else
 				println("model debe tener un valor de 0 a 3");
@@ -488,29 +488,29 @@ function modelCrossValidation(model :: int, paremeters :: Dict, inputs :: Array{
 			aciertos = resultadoGrupoK[resultadoGrupoK.==1];
 			resultadoCadaGrupo[x] = length(aciertos)/length(resultadoGrupoK);
 		end
-		return resultadoCadaGrupo;																							
+		return resultadoCadaGrupo;
 	else
 		targetsOHE = oneHotEncoding(targets);
 		results = Array{Float32, 2}(undef, 0);
 		for y in 1:k
 		    inputsDeIter = inputs[index.!=y];
 		    targetsDeIter = targets[index.!=y];
-				
+
 		    tupla = holdOut(size(inputsDeIter, 1), 0.3);
-																									
+
 		    inputsTraining = inputsDeIter[tupla[1],:];
     		    targetsTraining = targetsDeIter[tupla[1],:];
 		    inputsValidation = inputsDeIter[tupla[2],:];
     		    targetsValidation = targetsDeIter[tupla[2],:];
-																									
-		    tuplaRNA= entrenarRNA(parameters["topology"], (inputsTraining, targetsTraining), (inputs[index.==y], targets[.==y]), (inputsValidation, targetsValidation), 
-												  maxEpochs= parameters["maxEpochs"], minLoss= parameters["minLoss"], learningRate= parameters["learningRate"], 
+
+		    tuplaRNA= entrenarRNA(parameters["topology"], (inputsTraining, targetsTraining), (inputs[index.==y], targets[index.==y]), (inputsValidation, targetsValidation),
+												  maxEpochs= parameters["maxEpochs"], minLoss= parameters["minLoss"], learningRate= parameters["learningRate"],
 												  maxEpochsVal= parameters["maxEpochsVal"]);
 		    push!(results, tuplaRNA[3]);
 		end
 		return results
 	end
-	
+
 end
 
 using JLD2
@@ -621,7 +621,7 @@ function main()
     cm = confusionMatrix(out, targets, "weighted");
 
     params0 = Dict("topology" => topology, "transferF" => [], "learningRate" => 0.01, "tValidacion" => 0.2, "maxEpochs" => , "minLoss" => , "maxEpochsVal" => );
-    params1 = Dict("kernel" => "rbf", "kernelDegree" => 3, "kernelGamma" => 2, "C" => 1);  #SVM 
+    params1 = Dict("kernel" => "rbf", "kernelDegree" => 3, "kernelGamma" => 2, "C" => 1);  #SVM
     params2 = Dict("max_depth" => 4);    #tree
     params3 = Dict("k" => 3);     #kNN
 

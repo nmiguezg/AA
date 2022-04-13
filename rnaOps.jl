@@ -98,7 +98,7 @@ function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractAr
         	validl = loss(validation[1]',validation[2]');
         	testl = loss(test[1]',test[2]');
 
-        	if(validl < bestValLoss) #=si se mejora el minimo error se guarda la red neuronal que lo ha conseguido=#
+        	if (validl < bestValLoss) #=si se mejora el minimo error se guarda la red neuronal que lo ha conseguido=#
         		epochs = 0;
         		bestValLoss = validl;
         		ann_copy = deepcopy(ann);
@@ -131,4 +131,46 @@ function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractAr
     validationTargets = convert(Array{Bool,2}, validationTargets);
 
     return entrenarRNA(topology, (dataset[1],trainTargets), (test[1],testTargets), (validation[1],validationTargets), maxEpochs, minLoss, learningRate, maxEpochsVal)
+end
+
+function holdOut(N::Int64, P::Float64)
+	train_ind = randperm(N);
+
+	if P>=1.0
+		([],train_ind)
+	elseif P>0.5
+		array= collect(Iterators.partition(train_ind,Int64.(round(N*P, digits=0))));
+		(last(array),first(array));
+	elseif P!=0.0
+		array= collect(Iterators.partition(train_ind,Int64.(round(N*(1-P), digits=0))));
+		(first(array),last(array));
+	else
+		(train_ind, []);
+	end
+end
+
+function holdOut(N::Int64, Pval::Float64, Ptest::Float64)
+	if (Pval+Ptest)<=1.0
+		hold1=holdOut(N,Ptest);
+		hold2=holdOut(Int64.(length(getfield(hold1,1))), Pval*N/length(getfield(hold1,1)))
+		((getfield(hold1,1))[sortperm(getfield(hold2,1))],getfield(hold1,2),(reverse(getfield(hold1,1)))[sortperm(getfield(hold2,2))])
+	end
+end
+
+function unoVsTodos(inputs::AbstractArray{<:Real,2}, targets::AbstractArray{Bool,2})
+    numInstances = size(targets, 1);
+    numClasses = size(targets, 2);
+
+    outputs = Array{Float32,2}(undef, numInstances, numClasses);
+
+    for numClass in 1:numClasses
+        model = entrenarRNA([10], (inputs, targets[:,numClass]))[1];
+        outputs[:,numClass] = model(inputs');
+    end
+
+    outputs = softmax(outputs')';
+    vmax = maximum(outputs, dims=2);
+    outputs = (outputs .== vmax);
+
+    return outputs;
 end

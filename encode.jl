@@ -69,8 +69,8 @@ function normalizeZeroMean(inputs::AbstractArray{<:Real,2})::AbstractArray{<:Rea
 end
 
 function classifyOutputs(outputs::AbstractArray{<:Real,2},threshold=0.5)::BitMatrix
-    if(size(outputs,2) == 1)
-        outputs.>=threshold;
+    if (size(outputs,1) == 1)
+        outputs.>=threshold
     else
         (_,indicesMaxEachInstance) = findmax(outputs, dims=2);
         outputs = falses(size(outputs));

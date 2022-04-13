@@ -64,12 +64,14 @@ function extractFeatures(inputs)
 end
 
 # function main()
-#     targets = dataset[:,5];
-#     @assert (size(inputs,1)==size(targets,1))
-#     inputs = convert(Array{Float32,2},inputs);
-#     targetsOHE = oneHotEncoding(targets);
-#
-#     topology = [15, 9];
+    # dataset = readdlm("iris.data",',');
+    # inputs = dataset[:,1:4];
+    # targets = dataset[:,5];
+    # @assert (size(inputs,1)==size(targets,1))
+    # inputs = convert(Array{Float32,2},inputs);
+    # targets = oneHotEncoding(targets);
+    #
+    # topology = [15, 9];
 #     normalMethod = 1;
 #
 # #    tupla=holdOut(size(inputs, 1), 0.3,0.2);
@@ -122,14 +124,14 @@ end
 # end
 
 function main2()
-    (images,_,targets) = loadTrainingDataset()
+    (images, _, targets) = loadTrainingDataset()
     inputs = extractFeatures(images);
     @assert (size(inputs,1) == size(targets,1))
     inputs = convert(Array{Float32,2}, inputs);
     targets = oneHotEncoding(targets);
 
-    topology = [10, 10];
-    normalMethod = 1;
+    topology = [10, 5];
+    normalMethod = 0;
 
     tupla = holdOut(size(inputs, 1), 0.3, 0.2);
 
@@ -161,31 +163,18 @@ function main2()
         normalizeMinMax!(inputsTest, trainParam);
     end
 
-    tupla2 = entrenarRNA(topology, (inputsTraining, targetsTraining), (inputsTest, targetsTest), (inputsValidation, targetsValidation));
+    tupla2 = entrenarRNA(topology, (inputsTraining, targetsTraining), (inputsTest, targetsTest), (inputsValidation, targetsValidation), minLoss = 0.1, maxEpochsVal = 100);
 
 
-    resTra = classifyOutputs(tupla2[1](inputsTraining')');
-    println(size(tupla2[1](inputsTraining')'))
-    cm = confusionMatrix(resTra, targetsTraining, "macro");
+    resTra = classifyOutputs(tupla2[1](inputsTraining'))';
 
-    println("\n    Precisión : $(cm[1])");
-    println("        Error : $(cm[2])");
-    println(" Sensibilidad : $(cm[3])");
-    println("Especificidad : $(cm[4])");
-    println("          VPP : $(cm[5])");
-    println("          VPN : $(cm[6])");
-    println("           F1 : $(cm[7])\n");
+    cm = confusionMatrix(resTra, targetsTraining, "weighted");
 
-    # for l in 1:size(cm[8], 1)
-    #     println(cm[8][l,:])
-    # end
-
+    printStats(cm);
 
     g = plot(1:length(tupla2[2]), tupla2[2], label = "Training");
     plot!(g, 1:length(tupla2[3]), tupla2[3], label = "Validation");
     plot!(g, 1:length(tupla2[4]), tupla2[4], label = "Test");
-
-    #out = unoVsTodos(inputs, targets);
 end
 
 main2()

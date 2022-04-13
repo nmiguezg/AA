@@ -30,32 +30,6 @@ function accuracy(targets::AbstractArray{Bool,2}, outputs::AbstractArray{<:Real,
     end
 end
 
-
-function holdOut(N::Int64, P::Float64)
-	train_ind = randperm(N);
-
-	if P>=1.0
-		([],train_ind)
-	elseif P>0.5
-		array= collect(Iterators.partition(train_ind,Int64.(round(N*P, digits=0))));
-		(last(array),first(array));
-	elseif P!=0.0
-		array= collect(Iterators.partition(train_ind,Int64.(round(N*(1-P), digits=0))));
-		(first(array),last(array));
-	else
-		(train_ind, []);
-	end
-end
-
-function holdOut(N::Int64, Pval::Float64, Ptest::Float64)
-	if (Pval+Ptest)<=1.0
-		hold1=holdOut(N,Ptest);
-		hold2=holdOut(Int64.(length(getfield(hold1,1))), Pval*N/length(getfield(hold1,1)))
-		((getfield(hold1,1))[sortperm(getfield(hold2,1))],getfield(hold1,2),(reverse(getfield(hold1,1)))[sortperm(getfield(hold2,2))])
-	end
-end
-
-
 function confusionMatrix(outputs::AbstractArray{Bool,1}, targets::AbstractArray{Bool,1})
     if size(outputs) == size(targets)
         suma = outputs.+targets;
@@ -195,25 +169,6 @@ function confusionMatrix(outputs::AbstractArray{<:Any}, targets::AbstractArray{<
     confusionMatrix(oneHotEncoding(unique(outputs)), oneHotEncoding(unique(targets)), opcion, umbral);
 end
 
-
-function unoVsTodos(inputs::AbstractArray{<:Real,2}, targets::AbstractArray{Bool,2})
-    numInstances = size(targets, 1);
-    numClasses = size(targets, 2);
-
-    outputs = Array{Float32,2}(undef, numInstances, numClasses);
-
-    for numClass in 1:numClasses
-        model = entrenarRNA([10], (inputs, targets[:,numClass]))[1];
-        outputs[:,numClass] = model(inputs');
-    end
-
-    outputs = softmax(outputs')';
-    vmax = maximum(outputs, dims=2);
-    outputs = (outputs .== vmax);
-
-    return outputs;
-end
-
 function crossvalidation(N::Int64, k::Int64)
 	vector= collect(1:k);
 	vector=repeat(vector,convert(Int64, ceil(N/k)))
@@ -300,4 +255,18 @@ function modelCrossValidation(model :: Int64, paremeters :: Dict, inputs :: Arra
 		end
 		return results
 	end
+end
+
+function printStats(cm :: Tuple{Float64, Float64, Float64, Float64, Float64, Float64, Float64, AbstractArray{Int64, 2}})
+    println("\n    Precisión : $(cm[1])");
+    println("        Error : $(cm[2])");
+    println(" Sensibilidad : $(cm[3])");
+    println("Especificidad : $(cm[4])");
+    println("          VPP : $(cm[5])");
+    println("          VPN : $(cm[6])");
+    println("           F1 : $(cm[7])\n");
+
+    # for l in 1:size(cm[8], 1) # Imprime matriz de confusión
+    #     println(cm[8][l,:])
+    # end
 end

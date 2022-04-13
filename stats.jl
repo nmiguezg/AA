@@ -115,7 +115,7 @@ function confusionMatrix(outputs::AbstractArray{Bool,2}, targets::AbstractArray{
         if cTar == 2
             throw(Exception("Número de columnas incorrecto"));
         elseif cOut == 1
-            confusionMatrix(outputs, targets);
+            confusionMatrix(outputs[:,1], targets[:,1], umbral);
         else
             sensibilidad = zeros(cOut);
             especificidad = zeros(cOut);

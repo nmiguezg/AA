@@ -164,8 +164,9 @@ function main2()
     tupla2 = entrenarRNA(topology, (inputsTraining, targetsTraining), (inputsTest, targetsTest), (inputsValidation, targetsValidation));
 
 
-    resTra = tupla2[1](inputsTraining');
-    cm = confusionMatrix(resTra, targetsTraining', "macro");
+    resTra = classifyOutputs(tupla2[1](inputsTraining')');
+    println(size(tupla2[1](inputsTraining')'))
+    cm = confusionMatrix(resTra, targetsTraining, "macro");
 
     println("\n    Precisión : $(cm[1])");
     println("        Error : $(cm[2])");

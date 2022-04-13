@@ -63,75 +63,75 @@ function extractFeatures(inputs)
     features
 end
 
-function main()
-    targets = dataset[:,5];
-    @assert (size(inputs,1)==size(targets,1))
-    inputs = convert(Array{Float32,2},inputs);
-    targetsOHE = oneHotEncoding(targets);
-
-    topology = [15, 9];
-    normalMethod = 1;
-
-#    tupla=holdOut(size(inputs, 1), 0.3,0.2);
-
-#    inputsTraining = inputs[tupla[1],:];
-#    targetsTraining = targets[tupla[1],:];
-#    if (size(tupla, 1) == 3)
-#    	inputsValidation = inputs[tupla[2],:];
-#    	targetsValidation = targets[tupla[2],:];
-#    	inputsTest = inputs[tupla[3],:];
-#    	targetsTest = targets[tupla[3],:];
-#    else
-#       inputsTest = inputs[tupla[2],:];
-#    	targetsTest = targets[tupla[2],:];
-#    end
-
-#   if (normalMethod == 1)
-#        trainParam = calculateZeroMeanNormalizationParameters(inputsTraining);
-#        inputsTraining = normalizeZeroMean!(inputsTraining, trainParam);
-#        if (size(tupla, 1) == 3)
-#            inputsValidation = normalizeZeroMean!(inputsValidation, trainParam);
-#        end
-#        inputsTest = normalizeZeroMean!(inputsTest, trainParam);
-#    else
-#        trainParam = calculateMinMaxNormalizationParameters(inputsTraining);
-#        inputsTraining = normalizeMinMax!(inputsTraining, trainParam);
-#        if (size(tupla, 1) == 3)
-#      	    inputsValidation = normalizeMinMax!(inputsValidation, trainParam);
-#    	end
-#        inputsTest = normalizeMinMax!(inputsTest, trainParam);
-#    end
-
-#    tupla2 = entrenarRNA(topology, (inputsTraining, targetsTraining),(inputsTest, targetsTest),(inputsValidation, targetsValidation));
-
-#    g = plot(1:20, tupla2[2], label = "Training");
-#    plot!(g, 1:20, tupla2[3], label = "Validation");
-#    plot!(g, 1:20, tupla2[4], label = "Test");
-
-    out = unoVsTodos(inputs, targets);
-
-    cm = confusionMatrix(out, targets, "weighted");
-
-    # params0 = Dict("topology" => topology, "transferF" => [], "learningRate" => 0.01, "tValidacion" => 0.2, "maxEpochs" => , "minLoss" => , "maxEpochsVal" => );
-    params1 = Dict("kernel" => "rbf", "kernelDegree" => 3, "kernelGamma" => 2, "C" => 1);  #SVM
-    params2 = Dict("max_depth" => 4);    #tree
-    params3 = Dict("k" => 3);     #kNN
-
-    results = modelCrossValidation(1, params1, inputs, targets, 10)
-
-end
+# function main()
+#     targets = dataset[:,5];
+#     @assert (size(inputs,1)==size(targets,1))
+#     inputs = convert(Array{Float32,2},inputs);
+#     targetsOHE = oneHotEncoding(targets);
+#
+#     topology = [15, 9];
+#     normalMethod = 1;
+#
+# #    tupla=holdOut(size(inputs, 1), 0.3,0.2);
+#
+# #    inputsTraining = inputs[tupla[1],:];
+# #    targetsTraining = targets[tupla[1],:];
+# #    if (size(tupla, 1) == 3)
+# #    	inputsValidation = inputs[tupla[2],:];
+# #    	targetsValidation = targets[tupla[2],:];
+# #    	inputsTest = inputs[tupla[3],:];
+# #    	targetsTest = targets[tupla[3],:];
+# #    else
+# #       inputsTest = inputs[tupla[2],:];
+# #    	targetsTest = targets[tupla[2],:];
+# #    end
+#
+# #   if (normalMethod == 1)
+# #        trainParam = calculateZeroMeanNormalizationParameters(inputsTraining);
+# #        inputsTraining = normalizeZeroMean!(inputsTraining, trainParam);
+# #        if (size(tupla, 1) == 3)
+# #            inputsValidation = normalizeZeroMean!(inputsValidation, trainParam);
+# #        end
+# #        inputsTest = normalizeZeroMean!(inputsTest, trainParam);
+# #    else
+# #        trainParam = calculateMinMaxNormalizationParameters(inputsTraining);
+# #        inputsTraining = normalizeMinMax!(inputsTraining, trainParam);
+# #        if (size(tupla, 1) == 3)
+# #      	    inputsValidation = normalizeMinMax!(inputsValidation, trainParam);
+# #    	end
+# #        inputsTest = normalizeMinMax!(inputsTest, trainParam);
+# #    end
+#
+# #    tupla2 = entrenarRNA(topology, (inputsTraining, targetsTraining),(inputsTest, targetsTest),(inputsValidation, targetsValidation));
+#
+# #    g = plot(1:20, tupla2[2], label = "Training");
+# #    plot!(g, 1:20, tupla2[3], label = "Validation");
+# #    plot!(g, 1:20, tupla2[4], label = "Test");
+#
+#     out = unoVsTodos(inputs, targets);
+#
+#     cm = confusionMatrix(out, targets, "weighted");
+#
+#     # params0 = Dict("topology" => topology, "transferF" => [], "learningRate" => 0.01, "tValidacion" => 0.2, "maxEpochs" => , "minLoss" => , "maxEpochsVal" => );
+#     params1 = Dict("kernel" => "rbf", "kernelDegree" => 3, "kernelGamma" => 2, "C" => 1);  #SVM
+#     params2 = Dict("max_depth" => 4);    #tree
+#     params3 = Dict("k" => 3);     #kNN
+#
+#     results = modelCrossValidation(1, params1, inputs, targets, 10)
+#
+# end
 
 function main2()
     (images,_,targets) = loadTrainingDataset()
     inputs = extractFeatures(images);
-    @assert (size(inputs,1)==size(targets,1))
-    inputs = convert(Array{Float32,2},inputs);
+    @assert (size(inputs,1) == size(targets,1))
+    inputs = convert(Array{Float32,2}, inputs);
     targets = oneHotEncoding(targets);
 
-    topology = [15, 9];
+    topology = [10, 10];
     normalMethod = 1;
 
-    tupla=holdOut(size(inputs, 1), 0.3, 0.2);
+    tupla = holdOut(size(inputs, 1), 0.3, 0.2);
 
     inputsTraining = inputs[tupla[1],:];
     targetsTraining = targets[tupla[1],:];
@@ -161,15 +161,30 @@ function main2()
         normalizeMinMax!(inputsTest, trainParam);
     end
 
-    tupla2 = entrenarRNA(topology, (inputsTraining, targetsTraining),(inputsTest, targetsTest),(inputsValidation, targetsValidation));
+    tupla2 = entrenarRNA(topology, (inputsTraining, targetsTraining), (inputsTest, targetsTest), (inputsValidation, targetsValidation));
+
+
+    resTra = tupla2[1](inputsTraining');
+    cm = confusionMatrix(resTra, targetsTraining', "macro");
+
+    println("\n    Precisión : $(cm[1])");
+    println("        Error : $(cm[2])");
+    println(" Sensibilidad : $(cm[3])");
+    println("Especificidad : $(cm[4])");
+    println("          VPP : $(cm[5])");
+    println("          VPN : $(cm[6])");
+    println("           F1 : $(cm[7])\n");
+
+    # for l in 1:size(cm[8], 1)
+    #     println(cm[8][l,:])
+    # end
+
 
     g = plot(1:length(tupla2[2]), tupla2[2], label = "Training");
     plot!(g, 1:length(tupla2[3]), tupla2[3], label = "Validation");
     plot!(g, 1:length(tupla2[4]), tupla2[4], label = "Test");
 
     #out = unoVsTodos(inputs, targets);
-
-   # cm = confusionMatrix(out, targets, "weighted");
 end
 
 main2()

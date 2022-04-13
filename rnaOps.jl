@@ -111,7 +111,7 @@ function entrenarRNA(topology::AbstractArray{<:Int,1}, dataset::Tuple{AbstractAr
             push!(vector_test,testl);
             if trainl <= minLoss break; end
     	end
-        println(vector_entrenamiento, vector_validacion, vector_test);
+        #println(vector_entrenamiento, vector_validacion, vector_test);
     	return (ann_copy, vector_entrenamiento, vector_validacion, vector_test);
     end
 end

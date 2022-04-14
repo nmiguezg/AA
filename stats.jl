@@ -266,7 +266,8 @@ function printStats(cm :: Tuple{Float64, Float64, Float64, Float64, Float64, Flo
     println("          VPN : $(cm[6])");
     println("           F1 : $(cm[7])\n");
 
-    # for l in 1:size(cm[8], 1) # Imprime matriz de confusión
-    #     println(cm[8][l,:])
-    # end
+    println("Matriz de confusión :")
+    for l in 1:size(cm[8], 1) # Imprime matriz de confusión
+        println("\t $(cm[8][l,:])")
+    end
 end

@@ -166,9 +166,13 @@ function main2()
     tupla2 = entrenarRNA(topology, (inputsTraining, targetsTraining), (inputsTest, targetsTest), (inputsValidation, targetsValidation), minLoss = 0.1, maxEpochsVal = 100);
 
 
-    resTra = classifyOutputs(tupla2[1](inputsTraining'))';
+    resVal = classifyOutputs(tupla2[1](inputsValidation'))';
 
-    cm = confusionMatrix(resTra, targetsTraining, "weighted");
+    cm = confusionMatrix(resVal, targetsValidation, "weighted");
+
+    println("\nTopology : $(topology)");
+    println("weighted");
+    if (normalMethod == 1) println("ZeroMeanNormalization") else println("MinMaxNormalization") end;
 
     printStats(cm);
 

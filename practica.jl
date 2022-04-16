@@ -206,10 +206,8 @@ function main2()
 
     tupla2 = entrenarRNA(topology, (inputsTraining, targetsTraining), (inputsTest, targetsTest), (inputsValidation, targetsValidation), minLoss = 0.1, maxEpochsVal = 100);
 
-
-    resVal = classifyOutputs(tupla2[1](inputsValidation'))';
-
-    cm = confusionMatrix(resVal, targetsValidation, "weighted");
+    outVal = tupla2[1](inputsValidation')';
+    cm = confusionMatrix(outVal, targetsValidation, "weighted");
 
     println("\nTopology : $(topology)");
     println("weighted");
@@ -222,4 +220,4 @@ function main2()
     plot!(g, 1:length(tupla2[4]), tupla2[4], label = "Test");
 end
 
-main()
+main2()

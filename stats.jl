@@ -1,8 +1,13 @@
 using Statistics
 using Random
+using ScikitLearn
 
 include("encode.jl")
 include("rnaOps.jl")
+
+@sk_import svm: SVC
+@sk_import tree: DecisionTreeClassifier
+@sk_import neighbors: KNeighborsClassifier
 
 
 function accuracy(targets::AbstractArray{Bool,1}, outputs::AbstractArray{Bool,1})
@@ -204,10 +209,11 @@ function crossvalidation(targets::AbstractArray{<:Any,1}, k::Int64)
 	crossvalidation(oneHotEncoding(targets),k)
 end
 
-function modelCrossValidation(model :: Int64, paremeters :: Dict, inputs :: Array{Any, 2}, targets :: Array{Any, 1}, k :: Int64)
+function modelCrossValidation(model :: Int64, parameters :: Dict{String, Any}, inputs :: AbstractArray{<:Real, 2}, targets :: AbstractArray{<:Real, 2}, k :: Int64)
 	resultadoCadaGrupo = collect(1:k);
 	index=crossvalidation(targets,k);
-	if(model != 0)
+	println(index);
+	if (model != 0)
 		for x in 1:k
 			if (model == 1)   #SVN
 				model = SVC(kernel=parameters["kernel"], degree=parameters["kernelDegree"], gamma=parameters["kernelGamma"], C=parameters["C"]);
@@ -218,6 +224,8 @@ function modelCrossValidation(model :: Int64, paremeters :: Dict, inputs :: Arra
 			else
 				println("model debe tener un valor de 0 a 3");
 			end
+
+			println(index.!=x);
 
 			fit!(model, inputs[index.!=x], targets[index.!=x]);
 			outgrupoK=predict(model, inputs[index.==x]);   #salidas

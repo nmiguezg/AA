@@ -1,6 +1,7 @@
 using DelimitedFiles
 using Statistics
 using Plots
+using Random
 
 include("encode.jl")
 include("rnaOps.jl")
@@ -63,7 +64,7 @@ function extractFeatures(inputs)
     features
 end
 
-# function main()
+function main()
     # dataset = readdlm("iris.data",',');
     # inputs = dataset[:,1:4];
     # targets = dataset[:,5];
@@ -113,15 +114,59 @@ end
 #     out = unoVsTodos(inputs, targets);
 #
 #     cm = confusionMatrix(out, targets, "weighted");
-#
-#     # params0 = Dict("topology" => topology, "transferF" => [], "learningRate" => 0.01, "tValidacion" => 0.2, "maxEpochs" => , "minLoss" => , "maxEpochsVal" => );
-#     params1 = Dict("kernel" => "rbf", "kernelDegree" => 3, "kernelGamma" => 2, "C" => 1);  #SVM
-#     params2 = Dict("max_depth" => 4);    #tree
-#     params3 = Dict("k" => 3);     #kNN
-#
-#     results = modelCrossValidation(1, params1, inputs, targets, 10)
-#
-# end
+    Random.seed!();
+
+    (images, _, targets) = loadTrainingDataset()
+    inputs = extractFeatures(images);
+    @assert (size(inputs,1) == size(targets,1))
+    inputs = convert(Array{Float32,2}, inputs);
+    targets = oneHotEncoding(targets);
+
+    topology = [10, 5];
+    normalMethod = 0;
+
+    tupla = holdOut(size(inputs, 1), 0.3, 0.2);
+
+    inputsTraining = inputs[tupla[1],:];
+    targetsTraining = targets[tupla[1],:];
+    if (size(tupla, 1) == 3)
+        inputsValidation = inputs[tupla[2],:];
+        targetsValidation = targets[tupla[2],:];
+        inputsTest = inputs[tupla[3],:];
+        targetsTest = targets[tupla[3],:];
+    else
+        inputsTest = inputs[tupla[2],:];
+        targetsTest = targets[tupla[2],:];
+    end
+
+    if (normalMethod == 1)
+        trainParam = calculateZeroMeanNormalizationParameters(inputsTraining);
+        normalizeZeroMean!(inputsTraining, trainParam);
+        if (size(tupla, 1) == 3)
+            normalizeZeroMean!(inputsValidation, trainParam);
+        end
+        normalizeZeroMean!(inputsTest, trainParam);
+    else
+        trainParam = calculateMinMaxNormalizationParameters(inputsTraining);
+        normalizeMinMax!(inputsTraining, trainParam);
+        if (size(tupla, 1) == 3)
+            normalizeMinMax!(inputsValidation, trainParam);
+        end
+        normalizeMinMax!(inputsTest, trainParam);
+    end
+
+    println(crossvalidation(targetsTraining, 10))
+    println("\n")
+
+    params0 = Dict("topology" => topology, "transferF" => [], "learningRate" => 0.01, "tValidacion" => 0.2, "maxEpochs" => 1000, "minLoss" => 0, "maxEpochsVal" => 20);
+    params1 = Dict("kernel" => "rbf", "kernelDegree" => 3, "kernelGamma" => 2, "C" => 1);  #SVM
+    params2 = Dict("max_depth" => 4);    #tree
+    params3 = Dict("k" => 3);     #kNN
+
+    results = modelCrossValidation(1, params1, inputsTraining, targetsTraining, 10)
+
+    print(results)
+end
 
 function main2()
     (images, _, targets) = loadTrainingDataset()
@@ -181,4 +226,4 @@ function main2()
     plot!(g, 1:length(tupla2[4]), tupla2[4], label = "Test");
 end
 
-main2()
+main()

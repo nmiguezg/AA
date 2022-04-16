@@ -230,24 +230,18 @@ function modelCrossValidation(model :: Int64, parameters :: Dict, inputs :: Abst
 			outGrupoK = predict(m, inputs[index.==x, :]);   #salidas
 
 			nFilas = length(outGrupoK);
-			resultadoGrupoK = collect(1:nFilas);  #vector cuyos elementos indican si el patrón y coincide en salida y en target
 			targetsGrupoK = targets[index.==x];
 
-			for y in 1:nFilas
-				resultadoGrupoK[y] = outGrupoK[y]==targetsGrupoK[y];
-			end
-
-			aciertos = resultadoGrupoK[resultadoGrupoK.==1];
-			resultadoCadaGrupo[x] = length(aciertos)/length(resultadoGrupoK);
+			resultadoCadaGrupo[x] = accuracy(oneHotEncoding(targetsGrupoK), oneHotEncoding(outGrupoK));
 		end
 
 		return resultadoCadaGrupo;
 	else
 		targetsOHE = oneHotEncoding(targets);
-		results = Array{Float32, 2}(undef, 0);
+		#results = Array{Float32, 2}(undef, 0);
 		for y in 1:k
-		    inputsDeIter = inputs[index.!=y];
-			targetsDeIter = targets[index.!=y];
+		    inputsDeIter = inputs[index.!=y,:];
+			targetsDeIter = targets[index.!=y,:];
 
 			tupla = holdOut(size(inputsDeIter, 1), 0.3);
 
@@ -256,13 +250,13 @@ function modelCrossValidation(model :: Int64, parameters :: Dict, inputs :: Abst
 			inputsValidation = inputsDeIter[tupla[2],:];
     		targetsValidation = targetsDeIter[tupla[2],:];
 
-			tuplaRNA= entrenarRNA(parameters["topology"], (inputsTraining, targetsTraining), (inputs[index.==y], targets[index.==y]), (inputsValidation, targetsValidation),
+			tuplaRNA= entrenarRNA(parameters["topology"], (inputsTraining, targetsTraining), (inputs[index.==y,:], targets[index.==y,:]), (inputsValidation, targetsValidation),
 												  maxEpochs= parameters["maxEpochs"], minLoss= parameters["minLoss"], learningRate= parameters["learningRate"],
 												  maxEpochsVal= parameters["maxEpochsVal"]);
-			push!(results, tuplaRNA[3]);
+		#	push!(results, tuplaRNA[3]);
 		end
 
-		return results
+		return tuplaRNA[3];
 	end
 end
 

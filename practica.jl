@@ -159,7 +159,7 @@ function main()
     params2 = Dict("max_depth" => 4);    #tree
     params3 = Dict("k" => 3);     #kNN
 
-    results = modelCrossValidation(1, params1, inputs, targets, 10)
+    results = modelCrossValidation(0, params0, inputs, targets, 10)
 
     print(results)
 end

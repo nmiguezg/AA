@@ -120,7 +120,6 @@ function main()
     inputs = extractFeatures(images);
     @assert (size(inputs,1) == size(targets,1))
     inputs = convert(Array{Float32,2}, inputs);
-    targets = oneHotEncoding(targets);
 
     topology = [10, 5];
     normalMethod = 0;
@@ -155,15 +154,12 @@ function main()
         normalizeMinMax!(inputsTest, trainParam);
     end
 
-    println(crossvalidation(targetsTraining, 10))
-    println("\n")
-
     params0 = Dict("topology" => topology, "transferF" => [], "learningRate" => 0.01, "tValidacion" => 0.2, "maxEpochs" => 1000, "minLoss" => 0, "maxEpochsVal" => 20);
     params1 = Dict("kernel" => "rbf", "kernelDegree" => 3, "kernelGamma" => 2, "C" => 1);  #SVM
     params2 = Dict("max_depth" => 4);    #tree
     params3 = Dict("k" => 3);     #kNN
 
-    results = modelCrossValidation(1, params1, inputsTraining, targetsTraining, 10)
+    results = modelCrossValidation(1, params1, inputs, targets, 10)
 
     print(results)
 end

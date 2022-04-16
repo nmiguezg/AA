@@ -209,30 +209,29 @@ function crossvalidation(targets::AbstractArray{<:Any,1}, k::Int64)
 	crossvalidation(oneHotEncoding(targets),k)
 end
 
-function modelCrossValidation(model :: Int64, parameters :: Dict{String, Any}, inputs :: AbstractArray{<:Real, 2}, targets :: AbstractArray{<:Real, 2}, k :: Int64)
-	resultadoCadaGrupo = collect(1:k);
-	index=crossvalidation(targets,k);
-	println(index);
+function modelCrossValidation(model :: Int64, parameters :: Dict, inputs :: AbstractArray{<:Real, 2}, targets :: AbstractArray{<:Real, 1}, k :: Int64)
+	resultadoCadaGrupo = collect(Float64, 1:k);
+	index = crossvalidation(targets,k);
+
 	if (model != 0)
 		for x in 1:k
 			if (model == 1)   #SVN
-				model = SVC(kernel=parameters["kernel"], degree=parameters["kernelDegree"], gamma=parameters["kernelGamma"], C=parameters["C"]);
+				m = SVC(kernel=parameters["kernel"], degree=parameters["kernelDegree"], gamma=parameters["kernelGamma"], C=parameters["C"]);
 			elseif (model == 2) #Tree
-				model = DecisionTreeClassifier(max_depth=parameters["max_depth"], random_state=1);
+				m = DecisionTreeClassifier(max_depth=parameters["max_depth"], random_state=1);
 			elseif (model == 3) #kNN
-				model = KNeighborsClassifier(parameters["k"]);
+				m = KNeighborsClassifier(parameters["k"]);
 			else
-				println("model debe tener un valor de 0 a 3");
+                #throw(ErrorException("model debe tener un valor entre 0 y 3"));
+				println("model debe tener un valor entre 0 y 3");
 			end
 
-			println(index.!=x);
+			fit!(m, inputs[index.!=x, :], targets[index.!=x]);
+			outGrupoK = predict(m, inputs[index.==x, :]);   #salidas
 
-			fit!(model, inputs[index.!=x], targets[index.!=x]);
-			outgrupoK=predict(model, inputs[index.==x]);   #salidas
-
-			nFilas = length(out);
-			resultadoGrupoK= collect(1:nFilas);  #vector cuyos elementos indican si el patrón y coincide en salida y en target
-			targetsGrupoK= targets[index.==x];
+			nFilas = length(outGrupoK);
+			resultadoGrupoK = collect(1:nFilas);  #vector cuyos elementos indican si el patrón y coincide en salida y en target
+			targetsGrupoK = targets[index.==x];
 
 			for y in 1:nFilas
 				resultadoGrupoK[y] = outGrupoK[y]==targetsGrupoK[y];
@@ -241,6 +240,7 @@ function modelCrossValidation(model :: Int64, parameters :: Dict{String, Any}, i
 			aciertos = resultadoGrupoK[resultadoGrupoK.==1];
 			resultadoCadaGrupo[x] = length(aciertos)/length(resultadoGrupoK);
 		end
+
 		return resultadoCadaGrupo;
 	else
 		targetsOHE = oneHotEncoding(targets);
@@ -261,6 +261,7 @@ function modelCrossValidation(model :: Int64, parameters :: Dict{String, Any}, i
 												  maxEpochsVal= parameters["maxEpochsVal"]);
 			push!(results, tuplaRNA[3]);
 		end
+
 		return results
 	end
 end

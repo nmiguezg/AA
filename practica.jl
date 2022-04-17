@@ -65,56 +65,7 @@ function extractFeatures(inputs)
 end
 
 function main()
-    # dataset = readdlm("iris.data",',');
-    # inputs = dataset[:,1:4];
-    # targets = dataset[:,5];
-    # @assert (size(inputs,1)==size(targets,1))
-    # inputs = convert(Array{Float32,2},inputs);
-    # targets = oneHotEncoding(targets);
-    #
-    # topology = [15, 9];
-#     normalMethod = 1;
-#
-# #    tupla=holdOut(size(inputs, 1), 0.3,0.2);
-#
-# #    inputsTraining = inputs[tupla[1],:];
-# #    targetsTraining = targets[tupla[1],:];
-# #    if (size(tupla, 1) == 3)
-# #    	inputsValidation = inputs[tupla[2],:];
-# #    	targetsValidation = targets[tupla[2],:];
-# #    	inputsTest = inputs[tupla[3],:];
-# #    	targetsTest = targets[tupla[3],:];
-# #    else
-# #       inputsTest = inputs[tupla[2],:];
-# #    	targetsTest = targets[tupla[2],:];
-# #    end
-#
-# #   if (normalMethod == 1)
-# #        trainParam = calculateZeroMeanNormalizationParameters(inputsTraining);
-# #        inputsTraining = normalizeZeroMean!(inputsTraining, trainParam);
-# #        if (size(tupla, 1) == 3)
-# #            inputsValidation = normalizeZeroMean!(inputsValidation, trainParam);
-# #        end
-# #        inputsTest = normalizeZeroMean!(inputsTest, trainParam);
-# #    else
-# #        trainParam = calculateMinMaxNormalizationParameters(inputsTraining);
-# #        inputsTraining = normalizeMinMax!(inputsTraining, trainParam);
-# #        if (size(tupla, 1) == 3)
-# #      	    inputsValidation = normalizeMinMax!(inputsValidation, trainParam);
-# #    	end
-# #        inputsTest = normalizeMinMax!(inputsTest, trainParam);
-# #    end
-#
-# #    tupla2 = entrenarRNA(topology, (inputsTraining, targetsTraining),(inputsTest, targetsTest),(inputsValidation, targetsValidation));
-#
-# #    g = plot(1:20, tupla2[2], label = "Training");
-# #    plot!(g, 1:20, tupla2[3], label = "Validation");
-# #    plot!(g, 1:20, tupla2[4], label = "Test");
-#
-#     out = unoVsTodos(inputs, targets);
-#
-#     cm = confusionMatrix(out, targets, "weighted");
-    Random.seed!();
+    Random.seed!(123);
 
     (images, _, targets) = loadTrainingDataset()
     inputs = extractFeatures(images);
@@ -122,37 +73,6 @@ function main()
     inputs = convert(Array{Float32,2}, inputs);
 
     topology = [10, 5];
-    normalMethod = 0;
-
-    tupla = holdOut(size(inputs, 1), 0.3, 0.2);
-
-    inputsTraining = inputs[tupla[1],:];
-    targetsTraining = targets[tupla[1],:];
-    if (size(tupla, 1) == 3)
-        inputsValidation = inputs[tupla[2],:];
-        targetsValidation = targets[tupla[2],:];
-        inputsTest = inputs[tupla[3],:];
-        targetsTest = targets[tupla[3],:];
-    else
-        inputsTest = inputs[tupla[2],:];
-        targetsTest = targets[tupla[2],:];
-    end
-
-    if (normalMethod == 1)
-        trainParam = calculateZeroMeanNormalizationParameters(inputsTraining);
-        normalizeZeroMean!(inputsTraining, trainParam);
-        if (size(tupla, 1) == 3)
-            normalizeZeroMean!(inputsValidation, trainParam);
-        end
-        normalizeZeroMean!(inputsTest, trainParam);
-    else
-        trainParam = calculateMinMaxNormalizationParameters(inputsTraining);
-        normalizeMinMax!(inputsTraining, trainParam);
-        if (size(tupla, 1) == 3)
-            normalizeMinMax!(inputsValidation, trainParam);
-        end
-        normalizeMinMax!(inputsTest, trainParam);
-    end
 
     params0 = Dict("topology" => topology, "transferF" => [], "learningRate" => 0.01, "tValidacion" => 0.2, "maxEpochs" => 1000, "minLoss" => 0, "maxEpochsVal" => 20);
     params1 = Dict("kernel" => "rbf", "kernelDegree" => 3, "kernelGamma" => 2, "C" => 1);  #SVM

@@ -65,7 +65,7 @@ function extractFeatures(inputs)
 end
 
 
-function main()
+#function main()
     Random.seed!(123);
 
     (images, _, targets) = loadTrainingDataset()
@@ -73,17 +73,23 @@ function main()
     @assert (size(inputs,1) == size(targets,1))
     inputs = convert(Array{Float32,2}, inputs);
 
-    topology = [10, 5];
 
-    params0 = Dict("topology" => topology, "transferF" => [], "learningRate" => 0.01, "tValidacion" => 0.2, "maxEpochs" => 1000, "minLoss" => 0, "maxEpochsVal" => 20, "numEntrenamientos" => 10);
+    params0 = Dict("transferF" => [], "learningRate" => 0.01, "tValidacion" => 0.2, "maxEpochs" => 1000, "minLoss" => 0, "maxEpochsVal" => 20, "numEntrenamientos" => 10);
     params1 = Dict("kernel" => "rbf", "kernelDegree" => 3, "kernelGamma" => 2, "C" => 1);  #SVM
     params2 = Dict("max_depth" => 4);    #tree
     params3 = Dict("k" => 3);     #kNN
 
-    results = modelCrossValidation(:ANN, params0, inputs, targets, 10)
+    for i in 1:10
+        for j in 1:10
+            local topology = [i, j];
+            params0["topology"] = topology;
 
-    print(results)
-end
+            local results = modelCrossValidation(:ANN, params0, inputs, targets, 10)
+
+            println(topology,"MEAN ",mean(results)," STD: ",std(results))
+        end
+    end
+#end
 
 function main2()
     (images, _, targets) = loadTrainingDataset()

@@ -84,7 +84,7 @@ function main()
 
     params0 = Dict("transferF" => [], "learningRate" => 0.01, "tValidacion" => 0.2, "maxEpochs" => 1000, "minLoss" => 0, "maxEpochsVal" => 20, "numEntrenamientos" => 10);
     params1 = Dict("kernel" => "rbf", "kernelDegree" => 3, "kernelGamma" => 2, "C" => 1);  #SVM
-    params2 = Dict("max_depth" => 4);    #tree
+    params2 = Dict("max_depth" => 4);    #DT
     params3 = Dict("k" => 3);     #kNN
     
     medias = zeros(10,10)
@@ -101,6 +101,48 @@ function main()
             println(topology," MEAN ",medias[i,j]," STD: ",dt[i,j])
         end
     end
+    
+    for i in 1:10 # kNN
+        results = modelCrossValidation(:KNN, Dict("k" => i), inputs, targets, 10)
+        println(" k = $(i) \t MEAN: $(mean(results)) STD: $(std(results))")
+    end
+    
+    # for i in 1:10 # DT
+    #     results = modelCrossValidation(:DT, Dict("max_depth" => i), inputs, targets, 10)
+    #     println(" depth = $(i) \t MEAN: $(mean(results)) STD: $(std(results))")
+    # end
+
+    # for k in ("rbf", "linear", "poly") # SVM
+    #     for c in 1:10
+    #         if (k == "poly") || (k == "rbf")
+    #             for g in 1:10
+    #                 if (k == "poly")
+    #                     for d in 1:10
+    #                         results = modelCrossValidation(:SVM, Dict("kernel" => k, "kernelDegree" => d, "kernelGamma" => g, "C" => c), inputs, targets, 10)
+    #                         println(" kernel = $(k) degree = $(d) gamma = $(g) C = $(c) \t\t MEAN: $(mean(results)) STD: $(std(results))")
+    #                     end
+    #                 else
+    #                     results = modelCrossValidation(:SVM, Dict("kernel" => k, "kernelDegree" => 0, "kernelGamma" => g, "C" => c), inputs, targets, 10)
+    #                     println(" kernel = $(k) gamma = $(g) C = $(c) \t\t MEAN: $(mean(results)) STD: $(std(results))")
+    #                 end
+    #             end
+    #         else
+    #             results = modelCrossValidation(:SVM, Dict("kernel" => k, "kernelDegree" => 0, "kernelGamma" => "auto", "C" => c), inputs, targets, 10)
+    #             println(" kernel = $(k) C = $(c) \t\t MEAN: $(mean(results)) STD: $(std(results))")
+    #         end
+    #     end
+    # end
+
+    # for i in 1:10 # ANN
+    #     for j in 1:10
+    #         local topology = [i, j];
+    #         params0["topology"] = topology;
+    #
+    #         local results = modelCrossValidation(:ANN, params0, inputs, targets, 10)
+    #
+    #         println(topology," MEAN ",round(mean(results), digits=2)," STD: ",round(std(results), digits=2))
+    #     end
+    # end
 end
 
 #=function main2()
@@ -146,5 +188,6 @@ end
 
     g = plot(1:length(tupla2[2]), tupla2[2], label = "Training");
     plot!(g, 1:length(tupla2[3]), tupla2[3], label = "Validation");
-end=#
+end
+
 main()

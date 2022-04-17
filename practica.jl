@@ -2,7 +2,7 @@ using DelimitedFiles
 using Statistics
 using Plots
 using Random
-
+using DataFrames
 include("encode.jl")
 include("rnaOps.jl")
 include("stats.jl")
@@ -74,83 +74,77 @@ end
 function main()
     Random.seed!(123);
 
-    (images, _, targets) = loadTrainingDataset(true)
+    (images, _, targets) = loadTrainingDataset()
     inputs = extractFeatures(images);
     @assert (size(inputs,1) == size(targets,1))
     inputs = convert(Array{Float32,2}, inputs);
 
+    trainParam = calculateMinMaxNormalizationParameters(inputs);
+    normalizeMinMax!(inputs, trainParam);
 
     params0 = Dict("transferF" => [], "learningRate" => 0.01, "tValidacion" => 0.2, "maxEpochs" => 1000, "minLoss" => 0, "maxEpochsVal" => 20, "numEntrenamientos" => 10);
     params1 = Dict("kernel" => "rbf", "kernelDegree" => 3, "kernelGamma" => 2, "C" => 1);  #SVM
     params2 = Dict("max_depth" => 4);    #tree
     params3 = Dict("k" => 3);     #kNN
+    
+    medias = zeros(10,10)
+    dt = zeros(10,10)
 
     for i in 1:10
-        
         for j in 1:10
             topology = [i, j];
             params0["topology"] = topology;
 
             results = modelCrossValidation(:ANN, params0, inputs, targets, 10)
-
-            println(topology," MEAN ",round(mean(results), digits=2)," STD: ",round(std(results), digits=2))
+            medias[i,j] = mean(results)
+            dt[i,j] = std(results)
+            println(topology," MEAN ",medias[i,j]," STD: ",dt[i,j])
         end
     end
 end
 
-function main2()
+#=function main2()
+    #Random.seed!(123);
     (images, _, targets) = loadTrainingDataset()
     inputs = extractFeatures(images);
     @assert (size(inputs,1) == size(targets,1))
     inputs = convert(Array{Float32,2}, inputs);
     targets = oneHotEncoding(targets);
 
-    topology = [10, 5];
-    normalMethod = 0;
+    topology = [7, 2];
 
-    tupla = holdOut(size(inputs, 1), 0.3, 0.2);
+    (iTrain,iVal, iTest) = holdOut(size(inputs, 1), 0.2,0.);
 
-    inputsTraining = inputs[tupla[1],:];
-    targetsTraining = targets[tupla[1],:];
-    if (size(tupla, 1) == 3)
-    	inputsValidation = inputs[tupla[2],:];
-    	targetsValidation = targets[tupla[2],:];
-    	inputsTest = inputs[tupla[3],:];
-    	targetsTest = targets[tupla[3],:];
-    else
-        inputsTest = inputs[tupla[2],:];
-    	targetsTest = targets[tupla[2],:];
-    end
+    inputsTraining = inputs[iTrain,:];
+    targetsTraining = targets[iTrain,:];
+   	inputsValidation = inputs[iVal,:];
+   	targetsValidation = targets[iVal,:];
+   	inputsTest = inputs[iTest,:];
+   	targetsTest = targets[iTest,:];
 
-    if (normalMethod == 1)
-        trainParam = calculateZeroMeanNormalizationParameters(inputsTraining);
-        normalizeZeroMean!(inputsTraining, trainParam);
-        if (size(tupla, 1) == 3)
-            normalizeZeroMean!(inputsValidation, trainParam);
+    trainParam = calculateMinMaxNormalizationParameters(inputs);
+    normalizeMinMax!(inputs, trainParam);
+    
+    tupla2 = entrenarRNA(topology, (inputsTraining, targetsTraining), (inputsTest,targetsTest) ,(inputsValidation, targetsValidation));
+
+    out = tupla2[1](inputs')';
+    bcm = confusionMatrix(out, targets, "weighted");    
+    bAcc=bcm[1];
+    for i in 1:100
+        tupla2 = entrenarRNA(topology, (inputsTraining, targetsTraining), (inputsTest,targetsTest) ,(inputsValidation, targetsValidation));
+
+        out = tupla2[1](inputs')';
+        cm = confusionMatrix(out, targets, "weighted");
+        if (cm[1]>bAcc)
+            bAcc = cm[1];
+            bcm = cm;
         end
-        normalizeZeroMean!(inputsTest, trainParam);
-    else
-        trainParam = calculateMinMaxNormalizationParameters(inputsTraining);
-        normalizeMinMax!(inputsTraining, trainParam);
-        if (size(tupla, 1) == 3)
-      	    normalizeMinMax!(inputsValidation, trainParam);
-    	end
-        normalizeMinMax!(inputsTest, trainParam);
+
     end
-
-    tupla2 = entrenarRNA(topology, (inputsTraining, targetsTraining), (inputsTest, targetsTest), (inputsValidation, targetsValidation), minLoss = 0.1, maxEpochsVal = 100);
-
-    outTest = tupla2[1](inputsTest')';
-    cm = confusionMatrix(outTest, targetsTest, "weighted");
-
     println("\nTopology : $(topology)");
-    println("weighted");
-    if (normalMethod == 1) println("ZeroMeanNormalization") else println("MinMaxNormalization") end;
-
-    printStats(cm);
+    printStats(bcm);
 
     g = plot(1:length(tupla2[2]), tupla2[2], label = "Training");
     plot!(g, 1:length(tupla2[3]), tupla2[3], label = "Validation");
-    plot!(g, 1:length(tupla2[4]), tupla2[4], label = "Test");
-end
-#main()
+end=#
+main()

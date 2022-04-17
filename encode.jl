@@ -9,7 +9,7 @@ function oneHotEncoding(feature::AbstractArray{<:Any,1}, classes::AbstractArray{
         end
         outputs;
     else
-        reshape(feature.==classes[i], :, 1);
+        reshape(feature, :, 1);
     end
 end
 oneHotEncoding(feature::AbstractArray{<:Any,1}) = oneHotEncoding(feature, unique(feature));

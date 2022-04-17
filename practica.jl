@@ -64,8 +64,9 @@ function extractFeatures(inputs)
     features
 end
 
-#function main()
-    Random.seed!(11);
+
+function main()
+    Random.seed!(123);
 
     (images, _, targets) = loadTrainingDataset()
     inputs = extractFeatures(images);
@@ -82,7 +83,7 @@ end
     results = modelCrossValidation(:ANN, params0, inputs, targets, 10)
 
     print(results)
-#end
+end
 
 function main2()
     (images, _, targets) = loadTrainingDataset()

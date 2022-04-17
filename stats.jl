@@ -194,7 +194,7 @@ function crossvalidation(targets:: AbstractArray{Bool,2}, k::Int64)
         setindex!(vector,crossvalidation(sum(targets[:]),k), findall(i->i==1,targets));
         setindex!(vector,crossvalidation(N-sum(targets[:]),k), findall(i->i==0,targets));
     end
-	
+
 	return vector
 end
 
@@ -217,8 +217,8 @@ function modelCrossValidation(model :: Symbol, parameters :: Dict, inputs :: Abs
 			elseif (model == :KNN) #kNN
 				m = KNeighborsClassifier(parameters["k"]);
 			else
-                #throw(ErrorException("model debe tener un valor entre 0 y 3"));
-				println("model debe tener un valor entre 0 y 3");
+                throw(ErrorException("model no válido. Utiliza una de estas opciones: :ANN, :SVM, :DT, :KNN"));
+				#println("model debe tener un valor entre 0 y 3");
 			end
 
 			fit!(m, inputs[index.!=x, :], targets[index.!=x]);
@@ -247,6 +247,7 @@ function modelCrossValidation(model :: Symbol, parameters :: Dict, inputs :: Abs
             inputsTest = inputs[index.==y,:];
             targetsTest = targets[index.==y,:];
             metrica = Array{Float32, 1}(undef, 0);
+
             for i in 1:parameters["numEntrenamientos"] 
 			    tuplaRNA= entrenarRNA(parameters["topology"], (inputsTraining, targetsTraining), (inputsTest, targetsTest), (inputsValidation, targetsValidation),
 												  maxEpochs= parameters["maxEpochs"], minLoss= parameters["minLoss"], learningRate= parameters["learningRate"],
@@ -264,7 +265,7 @@ function modelCrossValidation(model :: Symbol, parameters :: Dict, inputs :: Abs
 	end
 end
 
-function printStats(cm :: Tuple{Float64, Float64, Float64, Float64, Float64, Float64, Float64, AbstractArray{Int64, 2}})
+function printStats(cm :: Tuple{<:Real, <:Real, <:Real, <:Real, <:Real, <:Real, <:Real, AbstractArray{Int64, 2}})
     println("\n    Precisión : $(cm[1])");
     println("        Error : $(cm[2])");
     println(" Sensibilidad : $(cm[3])");

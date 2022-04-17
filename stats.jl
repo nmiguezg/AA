@@ -181,11 +181,11 @@ function crossvalidation(N::Int64, k::Int64)
 end
 
 function crossvalidation(targets:: AbstractArray{Bool,2}, k::Int64)
-	N=size(targets,1);
+    N=size(targets,1);
 	vector= collect(1:N);
 	N2=size(targets,2)
 	vector2=collect(1:N)
-    
+
     if N2>2
         for x in 1:N2
             setindex!(vector,crossvalidation(sum(targets[:,x]),k), findall(i->i==1,targets));
@@ -202,17 +202,19 @@ function crossvalidation(targets::AbstractArray{<:Any,1}, k::Int64)
 	crossvalidation(oneHotEncoding(targets),k)
 end
 
-function modelCrossValidation(model :: Int64, parameters :: Dict, inputs :: AbstractArray{<:Real, 2}, targets :: AbstractArray{<:Real, 1}, k :: Int64)
-	resultadoCadaGrupo = collect(Float64, 1:k);
+function modelCrossValidation(model :: Symbol, parameters :: Dict, inputs :: AbstractArray{<:Real, 2}, targets :: AbstractArray{<:Real, 1}, k :: Int64)
+    @assert(size(inputs,1)==length(targets));
+
+    resultadoCadaGrupo = collect(Float64, 1:k);
 	index = crossvalidation(targets,k);
 
-	if (model != 0)
+	if (model != :ANN)
 		for x in 1:k
-			if (model == 1)   #SVN
+			if (model == :SVM)   #SVN
 				m = SVC(kernel=parameters["kernel"], degree=parameters["kernelDegree"], gamma=parameters["kernelGamma"], C=parameters["C"]);
-			elseif (model == 2) #Tree
+			elseif (model == :DT) #Tree
 				m = DecisionTreeClassifier(max_depth=parameters["max_depth"], random_state=1);
-			elseif (model == 3) #kNN
+			elseif (model == :KNN) #kNN
 				m = KNeighborsClassifier(parameters["k"]);
 			else
                 #throw(ErrorException("model debe tener un valor entre 0 y 3"));
@@ -231,25 +233,34 @@ function modelCrossValidation(model :: Int64, parameters :: Dict, inputs :: Abst
 		return resultadoCadaGrupo;
 	else
 		targetsOHE = oneHotEncoding(targets);
-		#results = Array{Float32, 2}(undef, 0);
+		results = Array{Float32, 1}(undef, 0);
+        numEntrenamientos = 10
 		for y in 1:k
 		    inputsDeIter = inputs[index.!=y,:];
 			targetsDeIter = targets[index.!=y,:];
 
-			tupla = holdOut(size(inputsDeIter, 1), 0.3);
+			tupla = holdOut(size(inputsDeIter, 1), parameters["tValidacion"]);
 
 		    inputsTraining = inputsDeIter[tupla[1],:];
     		targetsTraining = targetsDeIter[tupla[1],:];
 			inputsValidation = inputsDeIter[tupla[2],:];
     		targetsValidation = targetsDeIter[tupla[2],:];
-
-			tuplaRNA= entrenarRNA(parameters["topology"], (inputsTraining, targetsTraining), (inputs[index.==y,:], targets[index.==y,:]), (inputsValidation, targetsValidation),
+            inputsTest = inputs[index.==y,:];
+            targetsTest = targets[index.==y,:];
+            metrica = Array{Float32, 1}(undef, 0);
+            for i in 1:numEntrenamientos 
+			    tuplaRNA= entrenarRNA(parameters["topology"], (inputsTraining, targetsTraining), (inputsTest, targetsTest), (inputsValidation, targetsValidation),
 												  maxEpochs= parameters["maxEpochs"], minLoss= parameters["minLoss"], learningRate= parameters["learningRate"],
 												  maxEpochsVal= parameters["maxEpochsVal"]);
-		#	push!(results, tuplaRNA[3]);
+                tuplaRNA[1]
+                outTest = tuplaRNA[1](inputsTest')'; #salidas
+                cm = confusionMatrix(outTest, targetsTest, "weighted");
+                push!(metrica,cm[1])
+            end
+			push!(results, mean(metrica));
 		end
 
-		return tuplaRNA[3];
+		return results;
 	end
 end
 

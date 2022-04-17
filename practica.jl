@@ -159,7 +159,7 @@ function main()
     params2 = Dict("max_depth" => 4);    #tree
     params3 = Dict("k" => 3);     #kNN
 
-    results = modelCrossValidation(0, params0, inputs, targets, 10)
+    results = modelCrossValidation(:ANN, params0, inputs, targets, 10)
 
     print(results)
 end
@@ -206,8 +206,8 @@ function main2()
 
     tupla2 = entrenarRNA(topology, (inputsTraining, targetsTraining), (inputsTest, targetsTest), (inputsValidation, targetsValidation), minLoss = 0.1, maxEpochsVal = 100);
 
-    outVal = tupla2[1](inputsValidation')';
-    cm = confusionMatrix(outVal, targetsValidation, "weighted");
+    outTest = tupla2[1](inputsTest')';
+    cm = confusionMatrix(outTest, targetsTest, "weighted");
 
     println("\nTopology : $(topology)");
     println("weighted");
@@ -219,5 +219,4 @@ function main2()
     plot!(g, 1:length(tupla2[3]), tupla2[3], label = "Validation");
     plot!(g, 1:length(tupla2[4]), tupla2[4], label = "Test");
 end
-
-main2()
+main()

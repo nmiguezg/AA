@@ -46,9 +46,15 @@ function loadFolderImages(folderName::String)
 end;
 
 # Functions to load the dataset
-function loadTrainingDataset()
+function loadTrainingDataset(aprox2::Bool = false)
     (positivesColor, positivesGray) = loadFolderImages("bbdd/positivos");
     (negativesColor, negativesGray) = loadFolderImages("bbdd/negativos");
+    if aprox2
+        (negativesColor2, negativesGray2) = loadFolderImages("bbdd/negativos/aprox2/");
+        negativesColor = cat(negativesColor,negativesColor2, dims=1)
+        negativesGray = cat(negativesGray,negativesGray2, dims=1)
+    end
+
     targets = [trues(length(positivesColor)); falses(length(negativesColor))];
     return ([positivesColor; negativesColor], [positivesGray; negativesGray], targets);
 end;
@@ -65,10 +71,10 @@ function extractFeatures(inputs)
 end
 
 
-#function main()
+function main()
     Random.seed!(123);
 
-    (images, _, targets) = loadTrainingDataset()
+    (images, _, targets) = loadTrainingDataset(true)
     inputs = extractFeatures(images);
     @assert (size(inputs,1) == size(targets,1))
     inputs = convert(Array{Float32,2}, inputs);
@@ -80,16 +86,17 @@ end
     params3 = Dict("k" => 3);     #kNN
 
     for i in 1:10
+        
         for j in 1:10
-            local topology = [i, j];
+            topology = [i, j];
             params0["topology"] = topology;
 
-            local results = modelCrossValidation(:ANN, params0, inputs, targets, 10)
+            results = modelCrossValidation(:ANN, params0, inputs, targets, 10)
 
-            println(topology,"MEAN ",mean(results)," STD: ",std(results))
+            println(topology," MEAN ",round(mean(results), digits=2)," STD: ",round(std(results), digits=2))
         end
     end
-#end
+end
 
 function main2()
     (images, _, targets) = loadTrainingDataset()

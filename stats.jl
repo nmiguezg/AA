@@ -234,7 +234,6 @@ function modelCrossValidation(model :: Symbol, parameters :: Dict, inputs :: Abs
 	else
 		targetsOHE = oneHotEncoding(targets);
 		results = Array{Float32, 1}(undef, 0);
-        numEntrenamientos = 10
 		for y in 1:k
 		    inputsDeIter = inputs[index.!=y,:];
 			targetsDeIter = targets[index.!=y,:];
@@ -248,14 +247,15 @@ function modelCrossValidation(model :: Symbol, parameters :: Dict, inputs :: Abs
             inputsTest = inputs[index.==y,:];
             targetsTest = targets[index.==y,:];
             metrica = Array{Float32, 1}(undef, 0);
-            for i in 1:numEntrenamientos 
+            for i in 1:parameters["numEntrenamientos"] 
 			    tuplaRNA= entrenarRNA(parameters["topology"], (inputsTraining, targetsTraining), (inputsTest, targetsTest), (inputsValidation, targetsValidation),
 												  maxEpochs= parameters["maxEpochs"], minLoss= parameters["minLoss"], learningRate= parameters["learningRate"],
 												  maxEpochsVal= parameters["maxEpochsVal"]);
                 tuplaRNA[1]
                 outTest = tuplaRNA[1](inputsTest')'; #salidas
-                cm = confusionMatrix(outTest, targetsTest, "weighted");
-                push!(metrica,cm[1])
+                accuracy(targetsTest, outTest);
+                ##cm = confusionMatrix(outTest, targetsTest, "weighted");
+                push!(metrica,accuracy(targetsTest, outTest))
             end
 			push!(results, mean(metrica));
 		end

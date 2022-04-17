@@ -185,23 +185,16 @@ function crossvalidation(targets:: AbstractArray{Bool,2}, k::Int64)
 	vector= collect(1:N);
 	N2=size(targets,2)
 	vector2=collect(1:N)
-
-	#for x in N2
-	#	if(sum(targets[:,x])<k)
-	#		println("pocos")
-	#	end
-	#end
-
-	for x in 1:N2
-		vector2=crossvalidation(sum(targets[:,x]),k)
-		i=1
-		for y in ((x-1)*N+1):((x-1)*N+N)
-			if targets[y]==1
-				vector[y-(x-1)*N]=vector2[i]
-				i=i+1
-			end
-		end
-	end
+    
+    if N2>2
+        for x in 1:N2
+            setindex!(vector,crossvalidation(sum(targets[:,x]),k), findall(i->i==1,targets));
+        end
+    else
+        setindex!(vector,crossvalidation(sum(targets[:]),k), findall(i->i==1,targets));
+        setindex!(vector,crossvalidation(N-sum(targets[:]),k), findall(i->i==0,targets));
+    end
+	
 	return vector
 end
 

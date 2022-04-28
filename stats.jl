@@ -238,18 +238,18 @@ function modelCrossValidation(model :: Symbol, parameters :: Dict, inputs :: Abs
 		    inputsDeIter = inputs[index.!=y,:];
 			targetsDeIter = targets[index.!=y,:];
 
-			tupla = holdOut(size(inputsDeIter, 1), parameters["tValidacion"]);
+			#=tupla = holdOut(size(inputsDeIter, 1), parameters["tValidacion"]);
 
 		    inputsTraining = inputsDeIter[tupla[1],:];
     		targetsTraining = targetsDeIter[tupla[1],:];
 			inputsValidation = inputsDeIter[tupla[2],:];
-    		targetsValidation = targetsDeIter[tupla[2],:];
+    		targetsValidation = targetsDeIter[tupla[2],:];=#
             inputsTest = inputs[index.==y,:];
             targetsTest = targets[index.==y,:];
             metrica = Array{Float32, 1}(undef, 0);
 
             for i in 1:parameters["numEntrenamientos"] 
-			    tuplaRNA= entrenarRNA(parameters["topology"], (inputsTraining, targetsTraining), (inputsTest, targetsTest), (inputsValidation, targetsValidation),
+			    tuplaRNA= entrenarRNA(parameters["topology"], (inputsDeIter, targetsDeIter), (inputsTest, targetsTest),
 												  maxEpochs= parameters["maxEpochs"], minLoss= parameters["minLoss"], learningRate= parameters["learningRate"],
 												  maxEpochsVal= parameters["maxEpochsVal"]);
                 tuplaRNA[1]

@@ -62,7 +62,7 @@ function loadTrainingDataset(aprox2::Bool = false)
 end;
 loadTestDataset() = ((colorMatrix,_) = loadFolderImages("test"); return colorMatrix; );
 function extractFeatures(inputs)
-    features = zeros(length(inputs),6);
+    features = zeros(length(inputs),9);
     for i in 1:length(inputs)
         imagen = inputs[i];
         (height,width) = size(inputs[i])
@@ -75,12 +75,13 @@ function extractFeatures(inputs)
         features[i,4] = mean(imagen[h*2:h*3,w*2:w*3,1])
         features[i,5] = mean(imagen[h*2:h*3,w*2:w*3,2])
         features[i,6] = mean(imagen[h*2:h*3,w*2:w*3,3])
-        #features[i,7] = features[i,4] - mean([mean(imagen[h*0+1:h*1,w*0+1:w*1,1]),mean(imagen[h*4:h*5,w*4:w*5,1]),mean(imagen[h*4:h*5,w*0+1:w*1,1]), mean(imagen[h*0+1:h*1,w*4:w*5,1])])
-        #features[i,8] = features[i,5] - mean([mean(imagen[h*0+1:h*1,w*0+1:w*1,2]),mean(imagen[h*4:h*5,w*4:w*5,2]),mean(imagen[h*4:h*5,w*0+1:w*1,2]), mean(imagen[h*0+1:h*1,w*4:w*5,2])])
-        #features[i,9] = features[i,6] - mean([mean(imagen[h*0+1:h*1,w*0+1:w*1,3]),mean(imagen[h*4:h*5,w*4:w*5,3]),mean(imagen[h*4:h*5,w*0+1:w*1,3]), mean(imagen[h*0+1:h*1,w*4:w*5,3])])
-        #features[i,7] = abs(features[i,7])
-        #features[i,8] = abs(features[i,8])
-        #features[i,9] = abs(features[i,9])
+        #diferencia entre la media en la porcion central y la media en las esquinas
+        features[i,7] = features[i,4] - mean([mean(imagen[h*0+1:h*1,w*0+1:w*1,1]),mean(imagen[h*4:h*5,w*4:w*5,1]),mean(imagen[h*4:h*5,w*0+1:w*1,1]), mean(imagen[h*0+1:h*1,w*4:w*5,1])])
+        features[i,8] = features[i,5] - mean([mean(imagen[h*0+1:h*1,w*0+1:w*1,2]),mean(imagen[h*4:h*5,w*4:w*5,2]),mean(imagen[h*4:h*5,w*0+1:w*1,2]), mean(imagen[h*0+1:h*1,w*4:w*5,2])])
+        features[i,9] = features[i,6] - mean([mean(imagen[h*0+1:h*1,w*0+1:w*1,3]),mean(imagen[h*4:h*5,w*4:w*5,3]),mean(imagen[h*4:h*5,w*0+1:w*1,3]), mean(imagen[h*0+1:h*1,w*4:w*5,3])])
+        features[i,7] = abs(features[i,7])
+        features[i,8] = abs(features[i,8])
+        features[i,9] = abs(features[i,9])
     end
     features
 end
@@ -94,29 +95,34 @@ function main()
     @assert (size(inputs,1) == size(targets,1))
     inputs = convert(Array{Float32,2}, inputs);
 
-    #trainParam = calculateMinMaxNormalizationParameters(inputs);
-    #normalizeMinMax!(inputs, trainParam);
+    trainParam = calculateMinMaxNormalizationParameters(inputs);
+    normalizeMinMax!(inputs, trainParam);
 
-    params0 = Dict("transferF" => [], "learningRate" => 0.01, "tValidacion" => 0.2, "maxEpochs" => 1000, "minLoss" => 0, "maxEpochsVal" => 20, "numEntrenamientos" => 10);
+    params0 = Dict("transferF" => [], "learningRate" => 0.01, "maxEpochs" => 1000, "minLoss" => 0, "maxEpochsVal" => 20, "numEntrenamientos" => 50);
     params1 = Dict("kernel" => "rbf", "kernelDegree" => 3, "kernelGamma" => 2, "C" => 1);  #SVM
     params2 = Dict("max_depth" => 4);    #DT
     params3 = Dict("k" => 3);     #kNN
     
-    #=medias = zeros(10,10)
-    dt = zeros(10,10)
-
+    bMean= 0;
+    bTopology=[0];
     for i in 1:10
-        for j in 1:10
+        for j in 0:10
             topology = [i, j];
+            if j==0  
+                topology = [i];
+            end
             params0["topology"] = topology;
 
             results = modelCrossValidation(:ANN, params0, inputs, targets, 10)
-            medias[i,j] = mean(results)
-            dt[i,j] = std(results)
-            println(topology," MEAN ",medias[i,j]," STD: ",dt[i,j])
+            println(topology," MEAN ", mean(results)," STD: ", std(results))
+            if (mean(results)>bMean)
+                bMean = mean(results)
+                bTopology = topology;
+            end
         end
     end
-    
+    println(bTopology)
+    #=
     for i in 1:10 # kNN
         results = modelCrossValidation(:KNN, Dict("k" => i), inputs, targets, 10)
         println(" k = $(i) \t MEAN: $(mean(results)) STD: $(std(results))")
@@ -125,7 +131,7 @@ function main()
     for i in 1:10 # DT
          results = modelCrossValidation(:DT, Dict("max_depth" => i), inputs, targets, 10)
          println(" depth = $(i) \t MEAN: $(mean(results)) STD: $(std(results))")
-     end=#
+     end
     bMean= 0;
     bSVM = Dict("kernel" => "", "kernelDegree" => 0, "kernelGamma" => 0, "C" => 0);
        for k in ("rbf", "linear", "poly") # SVM
@@ -160,7 +166,7 @@ function main()
              end
          end
     end
-    print(bSVM)
+    print(bSVM)=#
 end
 
 function main2()
@@ -185,15 +191,15 @@ function main2()
     trainParam = calculateMinMaxNormalizationParameters(inputs);
     normalizeMinMax!(inputs, trainParam);
 
-    #parameters = Dict("max_depth" => 2);    #DT
-    parameters = Dict("kernel" => "poly", "kernelDegree" => 1, "kernelGamma" => 8, "C" => 10);  #SVM
+    parameters = Dict("max_depth" => 6);    #DT
+    #parameters = Dict("kernel" => "poly", "kernelDegree" => 6, "kernelGamma" => 4, "C" => 1);  #SVM
 
-    #parameters = Dict("k" => 7);     #kNN
+    #parameters = Dict("k" => 5);     #kNN
 
-    #m = DecisionTreeClassifier(max_depth=parameters["max_depth"], random_state=1);
+    m = DecisionTreeClassifier(max_depth=parameters["max_depth"], random_state=1);
     #m = KNeighborsClassifier(parameters["k"]);
 
-    m = SVC(kernel=parameters["kernel"], degree=parameters["kernelDegree"], gamma=parameters["kernelGamma"], C=parameters["C"]);
+    #m = SVC(kernel=parameters["kernel"], degree=parameters["kernelDegree"], gamma=parameters["kernelGamma"], C=parameters["C"]);
     fit!(m, inputs, targets);
     out = predict(m, inputs);   #salidas
 
@@ -213,4 +219,4 @@ function main2()
 =#
 end
 
-main2()
+main()

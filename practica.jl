@@ -3,12 +3,13 @@ using Statistics
 using Plots
 using Random
 using Images
+using JLD2
+
 include("encode.jl")
 include("rnaOps.jl")
 include("stats.jl")
+include("deepLearning.jl")
 
-using JLD2
-using Images
 
 # Functions that allow the conversion from images to Float64 arrays
 imageToGrayArray(image:: Array{RGB{Normed{UInt8,8}},2}) = convert(Array{Float64,2}, gray.(Gray.(image)));
@@ -131,13 +132,13 @@ function main()
     params1 = Dict("kernel" => "rbf", "kernelDegree" => 3, "kernelGamma" => 2, "C" => 1);  #SVM
     params2 = Dict("max_depth" => 4);    #DT
     params3 = Dict("k" => 3);     #kNN
-    
+
     bMean= 0;
     bTopology=[0];
     for i in 1:10
         for j in 0:10
             topology = [i, j];
-            if j==0  
+            if j==0
                 topology = [i];
             end
             params0["topology"] = topology;
@@ -156,7 +157,7 @@ function main()
         results = modelCrossValidation(:KNN, Dict("k" => i), inputs, targets, 10)
         println(" k = $(i) \t MEAN: $(mean(results)) STD: $(std(results))")
     end
-    
+
     for i in 1:10 # DT
          results = modelCrossValidation(:DT, Dict("max_depth" => i), inputs, targets, 10)
          println(" depth = $(i) \t MEAN: $(mean(results)) STD: $(std(results))")
@@ -239,13 +240,13 @@ function main2()
     tupla2 = entrenarRNA(topology, (inputsTraining, targetsTraining), (inputsTest,targetsTest) ,(inputsValidation, targetsValidation));
     out = tupla2[1](inputs')';
     out = classifyOutputs(out);=#
-    bCm = confusionMatrix(out, targets, "weighted"); 
+    bCm = confusionMatrix(out, targets, "weighted");
     #=for i in 1:50
         tupla2 = entrenarRNA(topology, (inputsTraining, targetsTraining), (inputsTest,targetsTest) ,(inputsValidation, targetsValidation));
 
         out = tupla2[1](inputs')';
         out = classifyOutputs(out);
-        cm = confusionMatrix(out, targets, "weighted");  
+        cm = confusionMatrix(out, targets, "weighted");
         if (cm[1]>acc)
             acc= cm[1];
             bCm = cm;
@@ -258,22 +259,8 @@ function main2()
 end
 
 #main2()
-function convertirArrayImagenesHWCN(imagenes)
-    numPatrones = length(imagenes);
-    nuevoArray = Array{Float32,4}(undef, 28, 28, 3, numPatrones); # Importante que sea un array de Float32
-    for i in 1:numPatrones
-        @assert (size(imagenes[i])==(28,28,3)) "Las imagenes no tienen tamaño 28x28";
-        nuevoArray[:,:,:,i] .= imagenes[i][:,:,:];
-    end;
-    return nuevoArray;
-end;
 
-function redesConvulacionales(images, size = (28,28))
-    resize_img(img) = imresize(img, size)
-    images = resize_img.(images)
-    images = imageToColorArray.(images)
-    images = convertirArrayImagenesHWCN(images)
-end
+
 function RGBToHSV(imagen)
     rgb_img = imagen
     hsv_img = HSV.(rgb_img)
@@ -310,7 +297,7 @@ function HSVMask(imagen)
         y = Int(round(centroide[2]));
         imagenObjetos[ x, y ] = RGB(1,0,0);
     end;
-    
+
     boundingBoxes = ImageMorphology.component_boxes(labelArray)[2:end];
     for boundingBox in boundingBoxes
         x1 = boundingBox[1][1];
@@ -324,3 +311,28 @@ function HSVMask(imagen)
     end;
     (imagenObjetos);
 end
+
+
+function mainDL()
+    (images, _, imagesRGB, targets) = loadTrainingDataset(true);
+    outImages = redesConvolucionales(imagesRGB);
+
+    (nTrain, nTest) = holdOut(size(outImages, 4), 0.2);
+    inputsTrain = outImages[:,:,:, nTrain];
+    inputsTest = outImages[:,:,:, nTest];
+    targetsTrain = targets[nTrain];
+    targetsTest = targets[nTest];
+
+    # INPUTS SEN NORMALIZAR
+
+    ann = crearRNAConvolucional(3, 1);
+
+    ann = entrenarRNAConvolucional(ann, (inputsTrain, targetsTrain), (inputsTest, targetsTest), 0.01, 0.95);
+
+    out = ann(outImages);
+    targets = reshape(targets, :, 1);
+    cm = confusionMatrix(out', targets, "weighted");
+    printStats(cm);
+end
+
+mainDL();

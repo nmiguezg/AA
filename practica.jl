@@ -91,24 +91,27 @@ end
 function extractFeaturesHSV(inputs)
     features = zeros(length(inputs),9);
     for i in 1:length(inputs)
-        (hue,saturation,value) = inputs[i];
+        (hue, saturation, value) = inputs[i];
         (height,width) = size(hue)
          h = trunc(Int,height/5)
          w = trunc(Int,width/5)
         features[i,1] = std(hue)
         features[i,2] = std(saturation)
         features[i,3] = std(value)
-        #= #media en la porcion central de la imagen
-        features[i,4] = mean(imagen[h*2:h*3,w*2:w*3,1])
-        features[i,5] = mean(imagen[h*2:h*3,w*2:w*3,2])
-        features[i,6] = mean(imagen[h*2:h*3,w*2:w*3,3])
-        #diferencia entre la media en la porcion central y la media en las esquinas
-        features[i,7] = features[i,4] - mean([mean(imagen[h*0+1:h*1,w*0+1:w*1,1]),mean(imagen[h*4:h*5,w*4:w*5,1]),mean(imagen[h*4:h*5,w*0+1:w*1,1]), mean(imagen[h*0+1:h*1,w*4:w*5,1])])
-        features[i,8] = features[i,5] - mean([mean(imagen[h*0+1:h*1,w*0+1:w*1,2]),mean(imagen[h*4:h*5,w*4:w*5,2]),mean(imagen[h*4:h*5,w*0+1:w*1,2]), mean(imagen[h*0+1:h*1,w*4:w*5,2])])
-        features[i,9] = features[i,6] - mean([mean(imagen[h*0+1:h*1,w*0+1:w*1,3]),mean(imagen[h*4:h*5,w*4:w*5,3]),mean(imagen[h*4:h*5,w*0+1:w*1,3]), mean(imagen[h*0+1:h*1,w*4:w*5,3])])
+         #media en la porcion central de la imagen
+        features[i,4] = mean(hue[h*2:h*3,w*2:w*3])
+        features[i,5] = mean(saturation[h*2:h*3,w*2:w*3])
+        features[i,6] = mean(value[h*2:h*3,w*2:w*3])
+         #diferencia entre la media en la porcion central y la media en las esquinas
+        features[i,7] = features[i,4] - mean([mean(hue[h*0+1:h*1,w*0+1:w*1]),mean(hue[h*4:h*5,w*4:w*5]),mean(hue[h*4:h*5,w*0+1:w*1]), mean(hue[h*0+1:h*1,w*4:w*5])])
+        features[i,8] = features[i,5] - mean([mean(saturation[h*0+1:h*1,w*0+1:w*1]),mean(saturation[h*4:h*5,w*4:w*5]),mean(saturation[h*4:h*5,w*0+1:w*1]), mean(saturation[h*0+1:h*1,w*4:w*5])])
+        features[i,9] = features[i,6] - mean([mean(value[h*0+1:h*1,w*0+1:w*1]),mean(value[h*4:h*5,w*4:w*5]),mean(value[h*4:h*5,w*0+1:w*1]), mean(value[h*0+1:h*1,w*4:w*5])])
         features[i,7] = abs(features[i,7])
         features[i,8] = abs(features[i,8])
-        features[i,9] = abs(features[i,9])=#
+        features[i,9] = abs(features[i,9])
+        #=(distanciaCentroide, tamano) = HSVMask(inputs[i])
+        features[i,10] = distanciaCentroide
+        features[i,11] = tamano=#
     end
     features
 end
@@ -120,7 +123,7 @@ function main()
 
     (images, _, imagesRGB, targets) = loadTrainingDataset(true)
     inputs = extractFeatures(images);
-    inputs = extractFeaturesHSV(RGBToHSV(imagesRGB))
+    inputs = extractFeaturesHSV(RGBToHSV.(imagesRGB))
     @assert (size(inputs,1) == size(targets,1))
     inputs = convert(Array{Float32,2}, inputs);
 
@@ -132,10 +135,24 @@ function main()
     params2 = Dict("max_depth" => 4);    #DT
     params3 = Dict("k" => 3);     #kNN
     
+    topologys = [[1], [1,1], [2],[3],[4], [5], [6], [7]]
+       
+    bMean= 0;
+    bTopology=[0];
+    for topology in topologys
+        params0["topology"] = topology;
+        results = modelCrossValidation(:ANN, params0, inputs, targets, 10)
+        println(topology," MEAN ", mean(results)," STD: ", std(results))
+        if (mean(results)>bMean)
+            bMean = mean(results)
+            bTopology = topology;
+        end
+    end
+    println(bTopology)
     bMean= 0;
     bTopology=[0];
     for i in 1:10
-        for j in 0:10
+        for j in 0:1
             topology = [i, j];
             if j==0  
                 topology = [i];
@@ -207,6 +224,37 @@ function main2()
 
     @assert (size(inputs,1) == size(targets,1))
     inputs = convert(Array{Float32,2}, inputs);
+
+    trainParam = calculateMinMaxNormalizationParameters(inputs);
+    normalizeMinMax!(inputs, trainParam);
+
+    parameters = Dict("k" => 1);     #kNN
+    m = KNeighborsClassifier(parameters["k"]);
+    fit!(m, inputs, targets);
+    out = predict(m, inputs);   #salidas
+    bCm = confusionMatrix(out, targets); 
+    println(parameters)
+    printStats(bCm);
+
+
+    parameters = Dict("kernel" => "rbf", "kernelDegree" => 0, "kernelGamma" => 3, "C" => 4);  #SVM
+    m = SVC(kernel=parameters["kernel"], degree=parameters["kernelDegree"], gamma=parameters["kernelGamma"], C=parameters["C"]);
+    fit!(m, inputs, targets);
+    out = predict(m, inputs);   #salidas
+    bCm = confusionMatrix(out, targets); 
+    println(parameters)
+    printStats(bCm);
+
+
+    parameters = Dict("max_depth" => 6);    #DT
+    m = DecisionTreeClassifier(max_depth=parameters["max_depth"], random_state=1);
+    fit!(m, inputs, targets);
+    out = predict(m, inputs);   #salidas
+    bCm = confusionMatrix(out, targets); 
+    println(parameters)
+    printStats(bCm);
+    parameters = Dict("max_depth" => 6);    #DT
+
     targets = oneHotEncoding(targets);
 
     topology = [3];
@@ -219,28 +267,12 @@ function main2()
    	targetsValidation = targets[iVal,:];
    	inputsTest = inputs[iTest,:];
    	targetsTest = targets[iTest,:];
-
-
-    trainParam = calculateMinMaxNormalizationParameters(inputs);
-    normalizeMinMax!(inputs, trainParam);
-
-    #parameters = Dict("max_depth" => 6);    #DT
-    parameters = Dict("kernel" => "poly", "kernelDegree" => 6, "kernelGamma" => 4, "C" => 1);  #SVM
-
-    #parameters = Dict("k" => 5);     #kNN
-
-    #m = DecisionTreeClassifier(max_depth=parameters["max_depth"], random_state=1);
-    #m = KNeighborsClassifier(parameters["k"]);
-
-    m = SVC(kernel=parameters["kernel"], degree=parameters["kernelDegree"], gamma=parameters["kernelGamma"], C=parameters["C"]);
-    fit!(m, inputs, targets);
-    out = predict(m, inputs);   #salidas
-    #=acc= 0;
+    acc= 0;
     tupla2 = entrenarRNA(topology, (inputsTraining, targetsTraining), (inputsTest,targetsTest) ,(inputsValidation, targetsValidation));
     out = tupla2[1](inputs')';
-    out = classifyOutputs(out);=#
+    out = classifyOutputs(out);
     bCm = confusionMatrix(out, targets, "weighted"); 
-    #=for i in 1:50
+    for i in 1:50
         tupla2 = entrenarRNA(topology, (inputsTraining, targetsTraining), (inputsTest,targetsTest) ,(inputsValidation, targetsValidation));
 
         out = tupla2[1](inputs')';
@@ -250,7 +282,7 @@ function main2()
             acc= cm[1];
             bCm = cm;
         end
-    end=#
+    end
     #println("\nTopology : $(topology)");
     println(parameters)
     printStats(bCm);
@@ -281,46 +313,43 @@ function RGBToHSV(imagen)
     (channels[1,:,:], channels[2,:,:], channels[3,:,:])
 end
 function HSVMask(imagen)
+    (hue_img, saturation_img, value_img) = imagen;
     mask = zeros(size(hue_img))
-    h, s, v = 100, 50, 150
+    h, s, v = 100, 50, 50
     for ind in eachindex(hue_img)
-        if saturation_img[ind] <= s/255
+        if saturation_img[ind] <= s/255 ##&& value_img[ind] <= v/255
         mask[ind] = 1
         end
     end
     matrizBooleana = colorview(Gray, mask)
+
     labelArray = ImageMorphology.label_components(matrizBooleana);
     tamanos = ImageMorphology.component_lengths(labelArray);
-    boundingBoxes = ImageMorphology.component_boxes(labelArray);
-    tamanos = ImageMorphology.component_lengths(labelArray)./length(imagen);
+    tamanos = ImageMorphology.component_lengths(labelArray)./length(hue_img);
     centroides = ImageMorphology.component_centroids(labelArray);
-    etiquetasEliminar = cat(findall(tamanos .<= 0.05) .- 1, findall(tamanos .>= 0.95) .- 1, dims=1); # Importate el -1, porque la primera etiqueta es la 0
+    etiquetasEliminar = cat(findall(tamanos .<= 0.2) .- 1, findall(tamanos .>= 0.95) .- 1, dims=1); # Importate el -1, porque la primera etiqueta es la 0
     matrizBooleana = [!in(etiqueta,etiquetasEliminar) && (etiqueta!=0) for etiqueta in labelArray];
-    display(Gray.(matrizBooleana));
+    #display(Gray.(matrizBooleana))
+
     labelArray = ImageMorphology.label_components(matrizBooleana);
     centroides = ImageMorphology.component_centroids(labelArray);
-
-
-    imagenObjetos = RGB.(matrizBooleana, matrizBooleana, matrizBooleana);
-    # Calculamos los centroides, y nos saltamos el primero (el elemento "0"):
     centroides = ImageMorphology.component_centroids(labelArray)[2:end];
-    # Para cada centroide, ponemos su situacion en color rojo
-    for centroide in centroides
-        x = Int(round(centroide[1]));
-        y = Int(round(centroide[2]));
-        imagenObjetos[ x, y ] = RGB(1,0,0);
-    end;
-    
-    boundingBoxes = ImageMorphology.component_boxes(labelArray)[2:end];
-    for boundingBox in boundingBoxes
-        x1 = boundingBox[1][1];
-        y1 = boundingBox[1][2];
-        x2 = boundingBox[2][1];
-        y2 = boundingBox[2][2];
-        imagenObjetos[ x1:x2 , y1 ] .= RGB(0,1,0);
-        imagenObjetos[ x1:x2 , y2 ] .= RGB(0,1,0);
-        imagenObjetos[ x1 , y1:y2 ] .= RGB(0,1,0);
-        imagenObjetos[ x2 , y1:y2 ] .= RGB(0,1,0);
-    end;
-    (imagenObjetos);
+    x=0.5
+    y=0.5
+    t=0
+    if length(centroides)>0
+        t = tamanos[1]
+        (x,y) = centroides[1]
+        x = x/size(hue_img,1)
+        y = y/size(hue_img,2)
+        if (x>0.5)
+            x=1-0.5
+        end
+        if (y>0.5)
+            y=1-0.5
+        end
+    end
+            
+    (x,y)
 end
+#main2()

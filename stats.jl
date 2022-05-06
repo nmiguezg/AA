@@ -11,27 +11,27 @@ include("rnaOps.jl")
 
 
 function accuracy(targets::AbstractArray{Bool,1}, outputs::AbstractArray{Bool,1})
-    mean(targets.==outputs)
+    return mean(targets.==outputs)
 end
 function accuracy(targets::AbstractArray{Bool,2}, outputs::AbstractArray{Bool,2})
     if (size(outputs,2) == 1 && size(targets,2) == 1)
-        accuracy(targets[:,1], outputs[:,1])
+        return accuracy(targets[:,1], outputs[:,1])
     elseif (size(outputs,2) == size(targets,2))
         classComparison = targets .== outputs;
         correctClassifications = all(classComparison, dims=2);
-        mean(correctClassifications);
+        return mean(correctClassifications);
     else
-        throw(DimensionMismatch())
+        throw(DimensionMismatch("Los tamaños no coinciden ($(size(targets,2)) vs. $(size(outputs,2)))"))
     end
 end
 function accuracy(targets::AbstractArray{Bool,1}, outputs::AbstractArray{<:Real,1}, threshold=0.5)
-    accuracy(targets, outputs.>=threshold)
+    return accuracy(targets, outputs.>=threshold)
 end
 function accuracy(targets::AbstractArray{Bool,2}, outputs::AbstractArray{<:Real,2}, threshold=0.5)
     if (size(outputs,2) == 1 && size(targets,2) == 1)
-        accuracy(targets[:,1],outputs[:,1])
+        return accuracy(targets[:,1],outputs[:,1])
     elseif (size(outputs,2) > 2 && size(targets,2) > 2)
-        accuracy(targets, classifyOutputs(outputs, threshold))
+        return accuracy(targets, classifyOutputs(outputs, threshold))
     end
 end
 
@@ -116,7 +116,7 @@ function confusionMatrix(outputs::AbstractArray{Bool,2}, targets::AbstractArray{
                 end
             end
 
-            c_matrix = Array{Float64,2}(undef, cOut, cTar);
+            c_matrix = Array{Int64,2}(undef, cOut, cTar);
             acertados = 0;
 
             for i in 1:cOut
@@ -169,7 +169,7 @@ function confusionMatrix(outputs::AbstractArray{<:Real,2}, targets::AbstractArra
 end
 
 function confusionMatrix(outputs::AbstractArray{<:Any}, targets::AbstractArray{<:Any}, opcion::String, umbral=0.5)
-    @assert (all([in(output, unique(targets)) for output in outputs])) "outputs y targets no tienen las mismas clases";
+    #@assert (all([in(output, unique(targets)) for output in outputs])) "outputs y targets no tienen las mismas clases";
 
     confusionMatrix(oneHotEncoding(unique(outputs)), oneHotEncoding(unique(targets)), opcion, umbral);
 end
@@ -248,7 +248,7 @@ function modelCrossValidation(model :: Symbol, parameters :: Dict, inputs :: Abs
             targetsTest = targets[index.==y,:];
             metrica = Array{Float32, 1}(undef, 0);
 
-            for i in 1:parameters["numEntrenamientos"] 
+            for i in 1:parameters["numEntrenamientos"]
 			    tuplaRNA= entrenarRNA(parameters["topology"], (inputsDeIter, targetsDeIter), (inputsTest, targetsTest),
 												  maxEpochs= parameters["maxEpochs"], minLoss= parameters["minLoss"], learningRate= parameters["learningRate"],
 												  maxEpochsVal= parameters["maxEpochsVal"]);

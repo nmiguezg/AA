@@ -22,27 +22,28 @@ function redesConvolucionales(images, size = (28,28))
     images = convertirArrayImagenesHWCN(images)
 end
 
-function crearRNAConvolucional(nCanalesEntrada :: Int64, neuronaOut :: Int64, fTransferencia = relu)
-    ann = Chain(
-        Conv((3, 3), nCanalesEntrada=>16, pad=(1,1), fTransferencia),
-        MaxPool((2,2)),
-        Conv((3, 3), 16=>32, pad=(1,1), fTransferencia),
-        MaxPool((2,2)),
-        Conv((3, 3), 32=>32, pad=(1,1), fTransferencia),
-        MaxPool((2,2)),
-        x -> reshape(x, :, size(x, 4))
-    )
+function crearRNAConvolucional(topology :: AbstractArray{Tuple{Int64, Int64}}, fPooling = MaxPool, fTransferencia = relu)
+    if (length(topology) > 1)
+        ann = Chain()
 
-    if (neuronaOut >= 2)
-        ann = Chain(ann...,
-            Dense(288, neuronaOut),
-            softmax
-        )
+        for (iConv, oConv) in topology[1:(length(topology)-1)]
+            ann = Chain(ann..., Conv((3, 3), iConv=>oConv, pad=(1,1), fTransferencia));
+            ann = Chain(ann..., fPooling((2,2)));
+        end
+
+        ann = Chain(ann..., x -> reshape(x, :, size(x, 4)));
+
+        (iDense, oDense) = topology[length(topology)];
+        if (oDense >= 2)
+            ann = Chain(ann..., Dense(iDense, oDense), softmax)
+        else
+            ann = Chain(ann..., Dense(iDense, oDense, σ))
+        end
+
+        return ann;
     else
-        ann = Chain(ann..., Dense(288, neuronaOut, σ))
+        throw(ErrorException("topology no tiene el tamaño suficiente"));
     end
-
-    return ann;
 end
 
 # Hay que declarar las variables globales que van a ser modificadas en el interior del bucle
@@ -61,6 +62,7 @@ function entrenarRNAConvolucional(ann, dataset::Tuple{AbstractArray{<:Real,4}, A
     numCiclo = 0;
     numCicloUltimaMejora = 0;
     mejorModelo = nothing;
+    results = Array{Float32,1}(undef, 0)
 
     while (!criterioFin)
 
@@ -74,6 +76,7 @@ function entrenarRNAConvolucional(ann, dataset::Tuple{AbstractArray{<:Real,4}, A
 
         # Se calcula la precision en el conjunto de entrenamiento:
         precisionEntrenamiento = accuracy(dataset[2], ann(dataset[1])', 0.5);
+        push!(results, precisionEntrenamiento);
         println("Ciclo ", numCiclo, ": Precision en el conjunto de entrenamiento: ", 100*precisionEntrenamiento, " %");
 
         # Si se mejora la precision en el conjunto de entrenamiento, se calcula la de test y se guarda el modelo
@@ -108,7 +111,7 @@ function entrenarRNAConvolucional(ann, dataset::Tuple{AbstractArray{<:Real,4}, A
         end
     end
 
-    return mejorModelo
+    return (mejorModelo, results)
 end
 
 function entrenarRNAConvolucional(ann, dataset::Tuple{AbstractArray{<:Real,4}, AbstractArray{Bool,1}},

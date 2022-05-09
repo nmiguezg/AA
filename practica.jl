@@ -135,9 +135,9 @@ function main()
     params1 = Dict("kernel" => "rbf", "kernelDegree" => 3, "kernelGamma" => 2, "C" => 1);  #SVM
     params2 = Dict("max_depth" => 4);    #DT
     params3 = Dict("k" => 3);     #kNN
-    
+
     topologys = [[1], [1,1], [2],[3],[4], [5], [6], [7]]
-       
+
     bMean= 0;
     bTopology=[0];
     for topology in topologys
@@ -233,7 +233,7 @@ function main2()
     m = KNeighborsClassifier(parameters["k"]);
     fit!(m, inputs, targets);
     out = predict(m, inputs);   #salidas
-    bCm = confusionMatrix(out, targets); 
+    bCm = confusionMatrix(out, targets);
     println(parameters)
     printStats(bCm);
 
@@ -242,7 +242,7 @@ function main2()
     m = SVC(kernel=parameters["kernel"], degree=parameters["kernelDegree"], gamma=parameters["kernelGamma"], C=parameters["C"]);
     fit!(m, inputs, targets);
     out = predict(m, inputs);   #salidas
-    bCm = confusionMatrix(out, targets); 
+    bCm = confusionMatrix(out, targets);
     println(parameters)
     printStats(bCm);
 
@@ -251,7 +251,7 @@ function main2()
     m = DecisionTreeClassifier(max_depth=parameters["max_depth"], random_state=1);
     fit!(m, inputs, targets);
     out = predict(m, inputs);   #salidas
-    bCm = confusionMatrix(out, targets); 
+    bCm = confusionMatrix(out, targets);
     println(parameters)
     printStats(bCm);
     parameters = Dict("max_depth" => 6);    #DT
@@ -272,7 +272,7 @@ function main2()
     tupla2 = entrenarRNA(topology, (inputsTraining, targetsTraining), (inputsTest,targetsTest) ,(inputsValidation, targetsValidation));
     out = tupla2[1](inputs')';
     out = classifyOutputs(out);
-    bCm = confusionMatrix(out, targets, "weighted"); 
+    bCm = confusionMatrix(out, targets, "weighted");
     for i in 1:50
         tupla2 = entrenarRNA(topology, (inputsTraining, targetsTraining), (inputsTest,targetsTest) ,(inputsValidation, targetsValidation));
 
@@ -336,7 +336,7 @@ function HSVMask(imagen)
             y=1-0.5
         end
     end
-            
+
     (x,y)
 end
 #main2()
@@ -375,14 +375,26 @@ function mainDL()
 
     # INPUTS SEN NORMALIZAR
 
-    ann = crearRNAConvolucional(3, 1);
+    topologies = [ [(3,16), (16,32), (32,32), (288, 1)],
+        [(3,4), (4,8), (8,8), (72, 1)],
+        [(3,4), (4,8), (8,16), (144, 1)],
+        [(3,8), (8,16), (16,32), (288, 1)],
+        [(3,8), (8,16), (16,16), (144, 1)] ]
 
-    ann = entrenarRNAConvolucional(ann, (inputsTrain, targetsTrain), (inputsTest, targetsTest), 0.01, 0.95);
+    for f in [MaxPool, MeanPool]
+        for t in topologies
+            ann = crearRNAConvolucional(t, MaxPool);
+            (ann, results) = entrenarRNAConvolucional(ann, (inputsTrain, targetsTrain), (inputsTest, targetsTest), 0.01, 0.98);
 
-    out = ann(outImages);
-    targets = reshape(targets, :, 1);
-    cm = confusionMatrix(out', targets, "weighted");
-    printStats(cm);
+            println("$(f) topology $(t)");
+            println("MEAN: $(mean(results)) STD: $(std(results))");
+
+            out = ann(outImages);
+            targets = reshape(targets, :, 1);
+            cm = confusionMatrix(out', targets, "weighted");
+            printStats(cm);
+        end
+    end
 end
 
 mainDL();

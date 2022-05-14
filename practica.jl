@@ -388,30 +388,4 @@ function detectBoat(image, model, trainParam, initialSize = 20, maxSize = 250, s
     display(image);
 end
 
-<<<<<<< HEAD
-function mainDL()
-    (images, _, imagesRGB, targets) = loadTrainingDataset(true);
-    outImages = redesConvolucionales(imagesRGB);
-
-    (nTrain, nTest) = holdOut(size(outImages, 4), 0.2);
-    inputsTrain = outImages[:,:,:, nTrain];
-    inputsTest = outImages[:,:,:, nTest];
-    targetsTrain = targets[nTrain];
-    targetsTest = targets[nTest];
-
-    # INPUTS SEN NORMALIZAR
-
-    ann = crearRNAConvolucional(3, 1);
-
-    ann = entrenarRNAConvolucional(ann, (inputsTrain, targetsTrain), (inputsTest, targetsTest), 0.01, 0.95);
-
-    out = ann(outImages);
-    targets = reshape(targets, :, 1);
-    cm = confusionMatrix(out', targets, "weighted");
-    printStats(cm);
-end
-
-#mainDL();
-=======
 main()
->>>>>>> d34d63edd493bde4523beffc7e78d5063b078d86

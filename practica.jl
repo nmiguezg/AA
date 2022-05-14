@@ -30,7 +30,7 @@ import Base.display
 #display(image::Array{Float64,3}) = (@assert(size(image,3)==3); display(RGB.(image[:,:,1],image[:,:,2],image[:,:,3])); )
 
 # Function to read all of the images in a folder and return them as 2 Float64 arrays: one with color components (3D array) and the other with grayscale components (2D array)
-function loadFolderImages(folderName::String, i)
+function loadFolderImages(folderName::String)
     isImageExtension(fileName::String) = any(uppercase(fileName[end-3:end]) .== [".JPG", ".PNG"]);
     images = [];
     for fileName in readdir(folderName)
@@ -50,11 +50,10 @@ end;
 
 # Functions to load the dataset
 function loadTrainingDataset(aprox2::Bool = false)
-    i=[0]
-    (positivesColor, positivesGray, positivesRGB) = loadFolderImages("bbdd/positivos",i);
-    (negativesColor, negativesGray, negativesRGB) = loadFolderImages("bbdd/negativos",i);
+    (positivesColor, positivesGray, positivesRGB) = loadFolderImages("bbdd/positivos");
+    (negativesColor, negativesGray, negativesRGB) = loadFolderImages("bbdd/negativos");
     if aprox2
-        (negativesColor2, negativesGray2,  negativesRGB2) = loadFolderImages("bbdd/negativos/aprox2/", i);
+        (negativesColor2, negativesGray2,  negativesRGB2) = loadFolderImages("bbdd/negativos/aprox2/");
         negativesColor = cat(negativesColor,negativesColor2, dims=1)
         negativesGray = cat(negativesGray,negativesGray2, dims=1)
         negativesRGB = cat(negativesRGB,negativesRGB2, dims=1)
@@ -64,7 +63,8 @@ function loadTrainingDataset(aprox2::Bool = false)
     targets = [trues(length(positivesColor)); falses(length(negativesColor))];
     return ([positivesColor; negativesColor], [positivesGray; negativesGray], cat(positivesRGB, negativesRGB, dims=1), targets);
 end;
-loadTestDataset() = ((colorMatrix,_,_) = loadFolderImages("test"); return colorMatrix; );
+loadTestDataset() = ((colorMatrix,_,imagesRGB) = loadFolderImages("barcos/images/1"); return imagesRGB; );
+
 function extractFeatures(inputs)
     features = zeros(length(inputs),9);
     for i in 1:length(inputs)
@@ -110,13 +110,9 @@ function extractFeaturesHSV(inputs)
         features[i,7] = abs(features[i,7])
         features[i,8] = abs(features[i,8])
         features[i,9] = abs(features[i,9])
-        #=(distanciaCentroide, tamano) = HSVMask(inputs[i])
-        features[i,10] = distanciaCentroide
-        features[i,11] = tamano=#
     end
     features
 end
-
 
 
 function main()
@@ -147,25 +143,6 @@ function main()
         if (mean(results)>bMean)
             bMean = mean(results)
             bTopology = topology;
-        end
-    end
-    println(bTopology)
-    bMean= 0;
-    bTopology=[0];
-    for i in 1:10
-        for j in 0:1
-            topology = [i, j];
-            if j==0
-                topology = [i];
-            end
-            params0["topology"] = topology;
-
-            results = modelCrossValidation(:ANN, params0, inputs, targets, 10)
-            println(topology," MEAN ", mean(results)," STD: ", std(results))
-            if (mean(results)>bMean)
-                bMean = mean(results)
-                bTopology = topology;
-            end
         end
     end
     println(bTopology)
@@ -218,7 +195,7 @@ end
 
 function main2()
     Random.seed!(123);
-
+    imagesTest = loadTestDataset()
     (images, _, imagesRGB, targets) = loadTrainingDataset(true)
     inputs = extractFeatures(images);
     inputs = extractFeaturesHSV(RGBToHSV.(imagesRGB))
@@ -228,7 +205,7 @@ function main2()
 
     trainParam = calculateMinMaxNormalizationParameters(inputs);
     normalizeMinMax!(inputs, trainParam);
-
+    #=
     parameters = Dict("k" => 1);     #kNN
     m = KNeighborsClassifier(parameters["k"]);
     fit!(m, inputs, targets);
@@ -255,7 +232,7 @@ function main2()
     println(parameters)
     printStats(bCm);
     parameters = Dict("max_depth" => 6);    #DT
-
+=#
     targets = oneHotEncoding(targets);
 
     topology = [3];
@@ -284,8 +261,9 @@ function main2()
             bCm = cm;
         end
     end
+    #detectBoat(imagesTest[2],(:ANN, tupla2[1]), trainParam, 40, 70)
     #println("\nTopology : $(topology)");
-    println(parameters)
+    #println(parameters)
     printStats(bCm);
     #println(findall(i->i!=1,out.==targets))
 end
@@ -339,7 +317,7 @@ function HSVMask(imagen)
             
     (x,y)
 end
-#main2()
+main2()
 #=
     # Para cada centroide, ponemos su situacion en color rojo
     for centroide in centroides
@@ -362,6 +340,53 @@ end
     (imagenObjetos);
 end
 =#
+function detectBoat(image, model, trainParam, initialSize = 20, maxSize = 250, step = 5)
+    (height,width) = size(image)
+    windowSize = (initialSize,initialSize)
+    coordenadasBarco = zeros(Bool,height,width)
+    for wsh in initialSize:step:maxSize
+        for wsx in initialSize:step:maxSize
+            #v1 = collect(1:height-wsh)
+            #v1 = collect(1:height-wsh)
+            #println(width-wsx)
+            #println(wsx)
+            #println(width)
+
+            for h in 1:3:(height-wsh)
+                for x in 1:3:(width-wsx)
+                    #println(x:wsx+x," de ", width-wsx )
+                    #println(h:wsh+h," de ", height-wsh )
+                    inputs = extractFeaturesHSV([RGBToHSV(image[h:wsh+h, x:wsx+x])])
+                    normalizeMinMax!(inputs, trainParam);
+                    if model[1] == :ANN
+                        out = (model[2])(inputs')';
+                        out = classifyOutputs(out);
+                    else
+                        predict(model[2],inputs)
+                    end
+                    for i in out
+                        if i==1
+                            coordenadasBarco[h:h+wsh, x:x+wsx].=1
+                        end
+                    end
+                end
+            end;
+        end
+    end
+    labelArray = ImageMorphology.label_components(coordenadasBarco);
+            boundingBoxes = ImageMorphology.component_boxes(labelArray)[2:end];
+            for boundingBox in boundingBoxes
+                x1 = boundingBox[1][1];
+                y1 = boundingBox[1][2];
+                x2 = boundingBox[2][1];
+                y2 = boundingBox[2][2];
+                image[ x1:x2 , y1 ] .= RGB(0,1,0);
+                image[ x1:x2 , y2 ] .= RGB(0,1,0);
+                image[ x1 , y1:y2 ] .= RGB(0,1,0);
+                image[ x2 , y1:y2 ] .= RGB(0,1,0);
+            end
+    display(image);
+end
 
 function mainDL()
     (images, _, imagesRGB, targets) = loadTrainingDataset(true);
@@ -385,4 +410,4 @@ function mainDL()
     printStats(cm);
 end
 
-mainDL();
+#mainDL();

@@ -5,10 +5,10 @@ using Random
 using Images
 using JLD2
 
-include("encode.jl")
-include("rnaOps.jl")
-include("stats.jl")
-include("deepLearning.jl")
+include("./fonts/encode.jl")
+include("./fonts/rnaOps.jl")
+include("./fonts/stats.jl")
+include("./fonts/cross.jl")
 
 
 # Functions that allow the conversion from images to Float64 arrays
@@ -363,38 +363,4 @@ end
 end
 =#
 
-function mainDL()
-    (images, _, imagesRGB, targets) = loadTrainingDataset(true);
-    outImages = redesConvolucionales(imagesRGB);
-
-    (nTrain, nTest) = holdOut(size(outImages, 4), 0.2);
-    inputsTrain = outImages[:,:,:, nTrain];
-    inputsTest = outImages[:,:,:, nTest];
-    targetsTrain = targets[nTrain];
-    targetsTest = targets[nTest];
-
-    # INPUTS SEN NORMALIZAR
-
-    topologies = [ [(3,16), (16,32), (32,32), (288, 1)],
-        [(3,4), (4,8), (8,8), (72, 1)],
-        [(3,4), (4,8), (8,16), (144, 1)],
-        [(3,8), (8,16), (16,32), (288, 1)],
-        [(3,8), (8,16), (16,16), (144, 1)] ]
-
-    for f in [MaxPool, MeanPool]
-        for t in topologies
-            ann = crearRNAConvolucional(t, MaxPool);
-            (ann, results) = entrenarRNAConvolucional(ann, (inputsTrain, targetsTrain), (inputsTest, targetsTest), 0.01, 0.98);
-
-            println("$(f) topology $(t)");
-            println("MEAN: $(mean(results)) STD: $(std(results))");
-
-            out = ann(outImages);
-            targets = reshape(targets, :, 1);
-            cm = confusionMatrix(out', targets, "weighted");
-            printStats(cm);
-        end
-    end
-end
-
-mainDL();
+main()

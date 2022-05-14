@@ -5,10 +5,10 @@ using Random
 using Images
 using JLD2
 
-include("encode.jl")
-include("rnaOps.jl")
-include("stats.jl")
-include("deepLearning.jl")
+include("./fonts/encode.jl")
+include("./fonts/rnaOps.jl")
+include("./fonts/stats.jl")
+include("./fonts/cross.jl")
 
 
 # Functions that allow the conversion from images to Float64 arrays
@@ -131,9 +131,9 @@ function main()
     params1 = Dict("kernel" => "rbf", "kernelDegree" => 3, "kernelGamma" => 2, "C" => 1);  #SVM
     params2 = Dict("max_depth" => 4);    #DT
     params3 = Dict("k" => 3);     #kNN
-    
+
     topologys = [[1], [1,1], [2],[3],[4], [5], [6], [7]]
-       
+
     bMean= 0;
     bTopology=[0];
     for topology in topologys
@@ -210,7 +210,7 @@ function main2()
     m = KNeighborsClassifier(parameters["k"]);
     fit!(m, inputs, targets);
     out = predict(m, inputs);   #salidas
-    bCm = confusionMatrix(out, targets); 
+    bCm = confusionMatrix(out, targets);
     println(parameters)
     printStats(bCm);
 
@@ -219,7 +219,7 @@ function main2()
     m = SVC(kernel=parameters["kernel"], degree=parameters["kernelDegree"], gamma=parameters["kernelGamma"], C=parameters["C"]);
     fit!(m, inputs, targets);
     out = predict(m, inputs);   #salidas
-    bCm = confusionMatrix(out, targets); 
+    bCm = confusionMatrix(out, targets);
     println(parameters)
     printStats(bCm);
 
@@ -228,7 +228,7 @@ function main2()
     m = DecisionTreeClassifier(max_depth=parameters["max_depth"], random_state=1);
     fit!(m, inputs, targets);
     out = predict(m, inputs);   #salidas
-    bCm = confusionMatrix(out, targets); 
+    bCm = confusionMatrix(out, targets);
     println(parameters)
     printStats(bCm);
     parameters = Dict("max_depth" => 6);    #DT
@@ -249,7 +249,7 @@ function main2()
     tupla2 = entrenarRNA(topology, (inputsTraining, targetsTraining), (inputsTest,targetsTest) ,(inputsValidation, targetsValidation));
     out = tupla2[1](inputs')';
     out = classifyOutputs(out);
-    bCm = confusionMatrix(out, targets, "weighted"); 
+    bCm = confusionMatrix(out, targets, "weighted");
     for i in 1:50
         tupla2 = entrenarRNA(topology, (inputsTraining, targetsTraining), (inputsTest,targetsTest) ,(inputsValidation, targetsValidation));
 
@@ -314,7 +314,7 @@ function HSVMask(imagen)
             y=1-0.5
         end
     end
-            
+
     (x,y)
 end
 main2()
@@ -388,6 +388,7 @@ function detectBoat(image, model, trainParam, initialSize = 20, maxSize = 250, s
     display(image);
 end
 
+<<<<<<< HEAD
 function mainDL()
     (images, _, imagesRGB, targets) = loadTrainingDataset(true);
     outImages = redesConvolucionales(imagesRGB);
@@ -411,3 +412,6 @@ function mainDL()
 end
 
 #mainDL();
+=======
+main()
+>>>>>>> d34d63edd493bde4523beffc7e78d5063b078d86

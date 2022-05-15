@@ -207,6 +207,10 @@ function readArgs()
 end
 
 (model,image, outputImage) = readArgs()
+if (model == "" || image=="" )
+    println("Usage: julia -model [RNA|ANN|SVM|DT] -image [IMAGE_PATH] [-output [OUTPUT_IMAGE_PATH]]")
+    exit(-1)
+end
 @assert(model in ["RNA","KNN", "SVM", "DT"] )
 (m, trainParam) = trainModel(model);
 
